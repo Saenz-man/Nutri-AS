@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 26, "column": 0}, "map": {"version":3,"sources":["file:///Users/urielsaenz/Library/CloudStorage/OneDrive-Personal/Documets/UD%2B/Proyecto-Nutrias/V2.0/nutri-as/src/app/%28public%29/servicios/%5Bslug%5D/page.tsx"],"sourcesContent":["export default function ServicioDetalle({ params }: { params: { slug: string } }) {\n  const { slug } = params;\n\n  return (\n    <div className=\"max-w-7xl mx-auto px-4 py-20\">\n      <h1 className=\"text-4xl font-bold capitalize text-emerald-600\">\n        Servicio: {slug.replace(/-/g, ' ')}\n      </h1>\n      <p className=\"mt-4 text-gray-600 italic\">\n        Aquí desarrollaremos el contenido específico que definimos para cada proceso de Nutri-AS.\n      </p>\n    </div>\n  );\n}"],"names":[],"mappings":";;;;;;AAAe,SAAS,gBAAgB,EAAE,MAAM,EAAgC;IAC9E,MAAM,EAAE,IAAI,EAAE,GAAG;IAEjB,qBACE,8OAAC;QAAI,WAAU;;0BACb,8OAAC;gBAAG,WAAU;;oBAAiD;oBAClD,KAAK,OAAO,CAAC,MAAM;;;;;;;0BAEhC,8OAAC;gBAAE,WAAU;0BAA4B;;;;;;;;;;;;AAK/C"}}]
+}
