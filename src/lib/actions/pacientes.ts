@@ -205,21 +205,26 @@ export const getHistorialCompleto = async (pacienteId: string) => {
 
   try {
     const historial = await db.patient.findUnique({
-      where: { id: pacienteId, nutritionistId: session.user.id },
+      where: { 
+        id: pacienteId, 
+        nutritionistId: session.user.id 
+      },
       include: {
         appointments: {
-          orderBy: { fechaHora: "desc" }, // Requisito: Orden cronológico
+          orderBy: { fechaHora: "desc" }, // Requisito: Orden Cronológico
           include: {
-            measurements: true, // Relación con Mediciones
-            labResults: true,   // Relación con Laboratorios
-            r24Records: true,   // Relación con R24
-          }
+      medicion: true,     // ✅ Debe ser singular (según tu schema.prisma)
+      r24: true,          // ✅ Relación 1:1 definida en el modelo
+      laboratorios: true, // ✅ Relación 1:N definida en el modelo
+      plan: true          // ✅ Relación 1:1 definida en el modelo
+    }
         }
       }
     });
 
     return { success: true, historial };
   } catch (error) {
-    return { error: "Error al consolidar el historial clínico." };
+    console.error("❌ Error en consolidación:", error);
+    return { error: "Error al conectar con Hostinger." };
   }
 };

@@ -6,6 +6,8 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// 👤 PERFIL DEL NUTRIÓLOGO (Edgar Uriel)
 model User {
   id           String        @id @default(uuid())
   nombre       String
@@ -14,17 +16,18 @@ model User {
   password     String
   telefono     String
   carrera      String
-  cumpleaños  DateTime
+  cumpleaños   DateTime
   fotoPerfil   String?
   fotoBanner   String?
   status       UserStatus    @default(PENDING_PAYMENT)
+  maxPatients  Int           @default(10)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  maxPatients  Int           @default(10)
   appointments Appointment[]
   patients     Patient[]
 }
 
+// 👥 EXPEDIENTE DEL PACIENTE
 model Patient {
   id              String         @id @default(uuid())
   expediente      String         @unique
@@ -35,42 +38,96 @@ model Patient {
   fechaNacimiento DateTime?
   foto            String?
   nutritionistId  String
+  status          PatientStatus  @default(ACTIVO)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
-  status          PatientStatus  @default(ACTIVO)
   appointments    Appointment[]
   consultations   Consultation[]
   nutritionist    User           @relation(fields: [nutritionistId], references: [id])
 }
 
-model Consultation {
-  id         String   @id @default(uuid())
-  fecha      DateTime @default(now())
-  peso       Float
-  talla      Float
-  imc        Float
-  subjetivo  String?
-  objetivo   String?
-  planAccion String?
-  patientId  String
-  createdAt  DateTime @default(now())
-  patient    Patient  @relation(fields: [patientId], references: [id])
+// 📅 CITA: El eje central del Historial Clínico
+model Appointment {
+  id              String        @id @default(uuid())
+  fechaHora       DateTime
+  motivo          String?       @default("Consulta de Seguimiento")
+  status          String        @default("PENDIENTE") // PENDIENTE, ATENDIDA, CANCELADA, NO_LLEGO
+  patientId       String
+  nutritionistId  String
+  createdAt       DateTime      @default(now())
+  
+  // 🔗 RELACIONES CLÍNICAS (Para el Timeline y KPIs)
+  medicion        Medicion?     // Datos antropométricos de esta cita
+  r24             R24?          // Recordatorio de 24 horas de esta cita
+  laboratorios    Laboratorio[] // Estudios cargados en esta fecha
+  plan            PlanAlimenticio? // Dieta asignada en esta consulta
+
+  nutritionist    User          @relation(fields: [nutritionistId], references: [id])
+  patient         Patient       @relation(fields: [patientId], references: [id])
 }
 
-model Appointment {
-  id             String   @id @default(uuid())
-  fechaHora      DateTime
-  motivo         String?  @default("Consulta de Seguimiento")
-  status         String   @default("PENDIENTE")
-  patientId      String
-  nutritionistId String
-  createdAt      DateTime @default(now())
-  nutritionist   User     @relation(fields: [nutritionistId], references: [id])
-  patient        Patient  @relation(fields: [patientId], references: [id])
+// 📏 BLOQUE: MEDICIONES (Para KPIs de Progreso)
+model Medicion {
+  id            String      @id @default(uuid())
+  peso          Float
+  talla         Float
+  imc           Float
+  grasa         Float?      // % Grasa solicitado
+  musculo       Float?      // % Músculo solicitado
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+}
+
+// 🧪 BLOQUE: ESTUDIOS DE LABORATORIO
+model Laboratorio {
+  id            String      @id @default(uuid())
+  parametro     String      // Ej: "Glucosa"
+  valor         Float
+  unidad        String      // Ej: "mg/dL"
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+}
+
+// 🍎 BLOQUE: R24 & SMAE
+model R24 {
+  id            String      @id @default(uuid())
+  consumoKcal   Float       // Consumo calórico detectado
+  notas         String?
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+}
+
+// 🥗 BLOQUE: CÁLCULO DIETÉTICO / PLANES
+model PlanAlimenticio {
+  id            String      @id @default(uuid())
+  nombre        String      // Ej: "Plan Hiperproteico V1"
+  detalles      String?
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+}
+
+// 📝 CONSULTA: Registro rápido histórico
+model Consultation {
+  id          String   @id @default(uuid())
+  fecha       DateTime @default(now())
+  peso        Float
+  talla       Float
+  imc         Float
+  subjetivo   String?
+  objetivo    String?
+  planAccion  String?
+  patientId   String
+  createdAt   DateTime @default(now())
+  patient     Patient  @relation(fields: [patientId], references: [id])
 }
 
 enum UserStatus {
   PENDING_PAYMENT
   ACTIVE
   TEST_USER
+}
+
+enum PatientStatus {
+  ACTIVO
+  INACTIVO
 }
