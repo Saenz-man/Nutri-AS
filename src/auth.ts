@@ -1,8 +1,8 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
-import { prisma } from "@/lib/prisma";
-import bcrypt from "bcrypt"; // Solo se carga en el servidor
+import { db } from "@/lib/db"; // 💡 Consistencia total con tu Singleton
+import bcrypt from "bcryptjs";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -12,12 +12,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        // 1. Buscamos al usuario en PostgreSQL
-        const user = await prisma.user.findUnique({
+        const user = await db.user.findUnique({
           where: { email: credentials.email as string },
         });
 
-        // 2. Validamos existencia y contraseña hasheada
         if (!user || !user.password) return null;
 
         const isValid = await bcrypt.compare(
@@ -27,14 +25,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!isValid) return null;
 
-        // 3. Retornamos el perfil completo para Nutri-AS
         return {
           id: user.id,
-          name: user.nombre,
+          name: `${user.nombre} ${user.apellido}`,
           email: user.email,
-          status: user.status, // ACTIVE o TEST_USER
+          status: user.status,
         };
       },
     }),
   ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.status = user.status;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string;
+        session.user.status = token.status as string;
+      }
+      return session;
+    },
+  },
+  session: { strategy: "jwt" },
+  pages: { signIn: "/login" },
 });

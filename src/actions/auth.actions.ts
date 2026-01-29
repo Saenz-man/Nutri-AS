@@ -1,28 +1,28 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+// 💡 IMPORTANTE: Usa 'db' que es tu Singleton de Prisma 6
+import { db } from "@/lib/db"; 
 import { RegisterSchema, LoginSchema } from "@/schemas/auth.schema";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 
-// --- ACCIÓN DE REGISTRO ---
+// --- REGISTRO ---
 export const registerUser = async (values: any) => {
   const validatedFields = RegisterSchema.safeParse(values);
-
-  if (!validatedFields.success) {
-    return { error: "Campos inválidos. Revisa los datos ingresados." };
-  }
+  if (!validatedFields.success) return { error: "Campos inválidos." };
 
   const { email, password, nombre, apellido, telefono, carrera, cumpleaños } = validatedFields.data;
 
   try {
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) return { error: "Este correo electrónico ya está en uso." };
+    // 🔍 Verificamos si ya existe el nutriólogo
+    const existingUser = await db.user.findUnique({ where: { email } });
+    if (existingUser) return { error: "El correo ya está en uso." };
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
+    const user = await db.user.create({
       data: {
         nombre,
         apellido,
@@ -31,44 +31,45 @@ export const registerUser = async (values: any) => {
         telefono,
         carrera,
         cumpleaños: new Date(cumpleaños),
-        status: "ACTIVE", // Saltamos la pasarela por ahora como acordamos
+        status: "ACTIVE", // Status por defecto para nuevos registros
       },
     });
 
     return { success: true, name: user.nombre };
   } catch (error) {
-    console.error("Error en registro:", error);
-    return { error: "Hubo un problema al crear la cuenta en Hostinger." };
+    console.error("❌ Error en registro:", error);
+    return { error: "Error de conexión con la base de datos de Hostinger." };
   }
 };
 
-// --- ACCIÓN DE LOGIN (La que te falta exportar) ---
+// --- LOGIN ---
 export const loginUser = async (values: any) => {
   const validatedFields = LoginSchema.safeParse(values);
-
-  if (!validatedFields.success) {
-    return { error: "Correo o contraseña inválidos." };
-  }
+  if (!validatedFields.success) return { error: "Datos incorrectos." };
 
   const { email, password } = validatedFields.data;
 
   try {
-    // Esta función de Auth.js hace la magia del redireccionamiento
+    // 🚀 Auth.js intentará validar contra Hostinger
     await signIn("credentials", {
       email,
       password,
-      redirectTo: "/dashboard", 
+      redirectTo: "/dashboard",
     });
   } catch (error) {
+    // 🚨 REGLA DE ORO: Si es redirección, relánzalo para que Next.js haga su magia
+    if (isRedirectError(error)) throw error;
+
     if (error instanceof AuthError) {
       switch (error.type) {
         case "CredentialsSignin":
-          return { error: "Credenciales incorrectas." };
+          return { error: "Correo o contraseña incorrectos." };
         default:
-          return { error: "Algo salió mal. Inténtalo de nuevo." };
+          return { error: "Algo salió mal con la sesión." };
       }
     }
-    // IMPORTANTE: Se debe lanzar el error para que Next.js maneje el redirect
-    throw error;
+
+    // Para cualquier otro error (como caída de DB en Hostinger)
+    return { error: "Error de servidor. Intenta más tarde." };
   }
 };
