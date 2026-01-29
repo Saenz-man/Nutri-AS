@@ -36,6 +36,7 @@ model Patient {
   email           String?
   telefono        String?
   fechaNacimiento DateTime?
+  sexo            String?
   foto            String?
   nutritionistId  String
   status          PatientStatus   @default(ACTIVO)
@@ -96,6 +97,7 @@ model Medicion {
   grasaVisceral     Float?
   edadMetabolica    Int?
   masaOsea          Float?
+  musculo         Float?   // ✅ AÑADIR ESTE: Para el % de Músculo
 
   // 🔘 Índices y Circunferencias
   imc               Float?

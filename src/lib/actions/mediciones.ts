@@ -41,14 +41,12 @@ export const guardarMedicionAction = async (pacienteId: string, data: any, fecha
   const session = await auth();
   if (!session?.user?.id) return { error: "No autorizado" };
 
-  // 🧹 LIMPIEZA DE DATOS: Convertimos strings a números o null
   const sanitizedData: any = {};
-  
   const numericFields = [
     'peso', 'talla', 'tallaSentado', 'envergadura', 
     'triceps', 'subescapular', 'biceps', 'crestaIliaca', 
     'supraespinal', 'abdominal', 'muslo', 'pierna',
-    'grasaEquipo', 'agua', 'grasaVisceral', 'masaOsea',
+    'grasaEquipo','musculo', 'agua', 'grasaVisceral', 'masaOsea',
     'imc', 'icc', 'cintura', 'cadera', 'brazoR', 'brazoC', 
     'piernaCirc', 'estiloideo', 'femur', 'humero'
   ];
@@ -62,7 +60,6 @@ export const guardarMedicionAction = async (pacienteId: string, data: any, fecha
     }
   });
 
-  // Edad Metabólica es Int en el Schema
   if (data.edadMetabolica && data.edadMetabolica !== "") {
     sanitizedData.edadMetabolica = parseInt(data.edadMetabolica);
   } else {
@@ -77,8 +74,7 @@ export const guardarMedicionAction = async (pacienteId: string, data: any, fecha
         nutritionistId: session.user.id,
         fechaHora: new Date(fecha),
         status: "ATENDIDA",
-        motivo: "Evaluación Antropométrica (ISAK)",
-      }
+        motivo: "Evaluación de Composición Corporal",      }
     });
 
     // 2. Crear medición vinculada
@@ -89,7 +85,17 @@ export const guardarMedicionAction = async (pacienteId: string, data: any, fecha
       }
     });
 
+    // ✅ 3. ACTUALIZACIÓN GLOBAL DEL PACIENTE
+    // Guardamos la talla en el perfil principal para que el IMC no sea 0.0
+    if (sanitizedData.talla) {
+      await db.patient.update({
+        where: { id: pacienteId },
+        data: { talla: sanitizedData.talla }
+      });
+    }
+
     revalidatePath(`/dashboard/pacientes/${pacienteId}/historia`);
+    revalidatePath(`/dashboard/pacientes/${pacienteId}`); // Refrescamos el perfil
     revalidatePath("/dashboard/pacientes");
     
     return { success: true };
