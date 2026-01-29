@@ -56,6 +56,12 @@ export const agendarCita = async (patientId: string, fecha: string, hora: string
 
   try {
     const fechaHora = new Date(`${fecha}T${hora}`);
+    
+    // 🔒 CANDADO: No agendar en el pasado
+    if (fechaHora < new Date()) {
+      return { error: "No puedes agendar citas en fechas o horas pasadas." };
+    }
+
     const nuevaCita = await db.appointment.create({
       data: {
         fechaHora,
@@ -66,11 +72,10 @@ export const agendarCita = async (patientId: string, fecha: string, hora: string
       }
     });
 
-    revalidatePath("/dashboard");
+    revalidatePath("/", "layout");
     return { success: true, id: nuevaCita.id };
   } catch (error) {
-    console.error("❌ Error al agendar:", error);
-    return { error: "Fallo al guardar en Hostinger." };
+    return { error: "Error al guardar en base de datos." };
   }
 };
 
@@ -87,8 +92,16 @@ export const actualizarCita = async (
   try {
     const updateData: any = {};
     if (data.status) updateData.status = data.status;
+
     if (data.fecha && data.hora) {
-      updateData.fechaHora = new Date(`${data.fecha}T${data.hora}`);
+      const nuevaFechaHora = new Date(`${data.fecha}T${data.hora}`);
+      const ahora = new Date();
+
+      // 🔒 CANDADO DE SERVIDOR: Evita el guardado en el pasado
+      if (nuevaFechaHora < ahora) {
+        return { error: "La cita no puede ser programada en el pasado." };
+      }
+      updateData.fechaHora = nuevaFechaHora;
     }
 
     await db.appointment.update({
@@ -99,6 +112,6 @@ export const actualizarCita = async (
     revalidatePath("/dashboard");
     return { success: true };
   } catch (error) {
-    return { error: "Error en el servidor." };
+    return { error: "Error en el servidor al actualizar la cita." };
   }
 };
