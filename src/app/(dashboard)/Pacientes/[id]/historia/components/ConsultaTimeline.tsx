@@ -1,58 +1,68 @@
-
+// src/app/(dashboard)/Pacientes/[id]/historia/components/ConsultaTimeline.tsx
 "use client";
 
-import { Calendar, Activity, Utensils, ClipboardList } from "lucide-react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { Activity, Beaker, ChevronRight, CalendarDays } from "lucide-react";
 
 export default function ConsultaTimeline({ appointments }: { appointments: any[] }) {
   return (
-    <div className="bg-white p-8 rounded-4xl border border-gray-100 shadow-sm h-full">
-      <h2 className="text-xl font-bold text-gray-900 mb-8 flex items-center gap-2">
-        <Calendar className="text-nutri-main" size={24} /> Línea de Tiempo
-      </h2>
+    <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:w-0.5 before:bg-gray-100">
+      {appointments.map((app) => {
+        // Verificamos qué datos existen realmente en la base
+        const tieneMedicion = !!app.medicion;
+        const tieneLabs = !!app.laboratorios;
 
-      <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-100 before:to-transparent">
-        {appointments.map((app, index) => (
-          <div key={app.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
-            {/* Círculo indicador */}
-            <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-gray-50 text-nutri-main shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 transition-colors group-hover:bg-nutri-main group-hover:text-white">
-              <ClipboardList size={18} />
+        return (
+          <div key={app.id} className="relative flex items-start group">
+            <div className="w-10 h-10 rounded-full bg-white border-2 border-gray-100 flex items-center justify-center z-10 group-hover:border-nutri-main transition-all shadow-sm">
+              <CalendarDays size={16} className="text-gray-300 group-hover:text-nutri-main" />
             </div>
 
-            {/* Tarjeta de Contenido */}
-            <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-6 rounded-3xl border border-gray-50 shadow-sm group-hover:border-nutri-main/20 transition-all">
-              <div className="flex items-center justify-between mb-3">
-                <time className="font-black text-[10px] uppercase text-nutri-main tracking-widest">
-                  {format(new Date(app.fechaHora), "dd MMMM, yyyy", { locale: es })}
-                </time>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-gray-100 rounded-lg text-gray-500">{app.status}</span>
+            <div className="ml-6 flex-1 bg-white border border-gray-100 p-6 rounded-4xl shadow-sm hover:shadow-md transition-all">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                  {new Date(app.fechaHora).toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}
+                </span>
+                <span className="px-3 py-1 bg-gray-50 rounded-full text-[9px] font-black text-gray-400 uppercase italic">
+                  {app.status}
+                </span>
               </div>
-              
-              <div className="space-y-4">
-                <p className="text-sm text-gray-700 font-medium italic">"{app.motivo}"</p>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Resumen Mediciones */}
-                  <div className="bg-green-50/50 p-3 rounded-2xl flex items-center gap-2">
-                    <Activity className="text-green-500" size={14} />
-                    <span className="text-xs font-bold text-green-700">
-                      {app.medicion ? `${app.medicion.peso}kg / IMC ${app.medicion.imc}` : "Sin datos"}
-                    </span>
+
+              <h3 className="font-bold text-gray-800 italic mb-4">"{app.motivo}"</h3>
+
+              {/* 🛡️ Solo mostramos los bloques si existen registros en la base de datos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {tieneMedicion && (
+                  <div className="p-4 rounded-3xl border bg-green-50/30 border-green-100">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Activity size={14} className="text-green-500" />
+                      <span className="text-[9px] font-black text-green-600 uppercase">Antropometría</span>
+                    </div>
+                    <p className="text-xs font-bold text-gray-700">
+                      Peso: {app.medicion.peso}kg | IMC: {app.medicion.imc}
+                    </p>
                   </div>
-                  {/* Resumen R24 */}
-                  <div className="bg-orange-50/50 p-3 rounded-2xl flex items-center gap-2">
-                    <Utensils className="text-orange-500" size={14} />
-                    <span className="text-xs font-bold text-orange-700">
-                      {app.r24 ? `${app.r24.consumoKcal} kcal` : "Sin R24"}
-                    </span>
+                )}
+
+                {tieneLabs && (
+                  <div className="p-4 rounded-3xl border bg-purple-50/30 border-purple-100">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Beaker size={14} className="text-purple-500" />
+                      <span className="text-[9px] font-black text-purple-600 uppercase">Laboratorios</span>
+                    </div>
+                    <p className="text-xs font-bold text-gray-700">
+                      Glucosa: {app.laboratorios.glucosaAyuno} | Colesterol: {app.laboratorios.colesterolTotal}
+                    </p>
                   </div>
-                </div>
+                )}
               </div>
+
+              <button className="mt-4 flex items-center gap-1 text-[10px] font-black text-nutri-main uppercase hover:gap-2 transition-all">
+                Detalle completo de consulta <ChevronRight size={14} />
+              </button>
             </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
