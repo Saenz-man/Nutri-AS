@@ -6,7 +6,8 @@ import { revalidatePath } from "next/cache";
 
 /**
  * 📋 OBTENER CATÁLOGO COMPLETO
- * Trae todos los pacientes vinculados a Edgar Uriel para el listado general.
+ * Trae todos los pacientes vinculados al nutriólogo en sesión.
+ * Incluye campos necesarios para la visualización de tarjetas.
  */
 export const getPacientes = async () => {
   const session = await auth();
@@ -17,7 +18,7 @@ export const getPacientes = async () => {
   try {
     const pacientes = await db.patient.findMany({
       where: { 
-        nutritionistId: userId // 🛡️ Aislamiento estricto de datos
+        nutritionistId: userId // 🛡️ Aislamiento por nutriólogo
       },
       orderBy: { nombre: "asc" },
       select: {
@@ -26,6 +27,8 @@ export const getPacientes = async () => {
         apellido: true,
         expediente: true,
         telefono: true,
+        foto: true,   // ✅ Requerido para la Card
+        status: true, // ✅ Requerido para el indicador de actividad
       }
     });
     return { success: true, pacientes };
@@ -37,19 +40,16 @@ export const getPacientes = async () => {
 
 /**
  * 📝 REGISTRAR PACIENTE
- * Crea un nuevo paciente vinculado estrictamente al nutriólogo en sesión.
+ * Crea un nuevo paciente y limpia la caché para actualización inmediata.
  */
 export const registrarPaciente = async (data: any) => {
   const session = await auth();
-
-  if (!session?.user?.id) {
-    return { error: "No autorizado. Debes iniciar sesión." };
-  }
+  if (!session?.user?.id) return { error: "No autorizado" };
 
   try {
     const userId = session.user.id;
 
-    // Control de Límite basado en el plan del usuario
+    // 1. Validación de límites (se mantiene igual)
     const user = await db.user.findUnique({
       where: { id: userId },
       select: { maxPatients: true, _count: { select: { patients: true } } }
@@ -59,26 +59,23 @@ export const registrarPaciente = async (data: any) => {
       return { error: "LIMIT_REACHED", max: user.maxPatients };
     }
 
-    const existing = await db.patient.findFirst({
-      where: { 
-        expediente: data.expediente,
-        nutritionistId: userId 
-      }
-    });
-
-    if (existing) return { error: "DUPLICATE_PATIENT" };
-
+    // 2. Transformación de datos crítica 🚀
     const newPatient = await db.patient.create({
       data: {
-        ...data,
-        nutritionistId: userId, // 🔒 Vínculo forzado en el servidor
+        nombre: data.nombre,
+        apellido: data.apellido,
+        expediente: data.expediente,
+        telefono: data.telefono,
+        email: data.email,
+        // ✅ CORRECCIÓN DE FECHA: De string a objeto Date
+        fechaNacimiento: data.fechaNacimiento ? new Date(data.fechaNacimiento) : null,
+        nutritionistId: userId,
+        // ⚠️ NOTA: Si quieres guardar motivoConsulta, antecedentes, etc., 
+        // primero debes añadirlos a tu schema.prisma y hacer npx prisma db push.
       },
     });
 
-    // Refrescamos rutas para actualizar el catálogo y el dashboard inmediatamente
     revalidatePath("/dashboard/pacientes");
-    revalidatePath("/dashboard");
-
     return { success: true, id: newPatient.id };
   } catch (error) {
     console.error("❌ Error en registrarPaciente:", error);
@@ -87,12 +84,77 @@ export const registrarPaciente = async (data: any) => {
 };
 
 /**
- * 🔍 BUSCAR PACIENTES
- * Búsqueda inteligente para Nueva Consulta (Nombre, Apellido o Expediente).
+ * 🔄 ACTUALIZAR INFORMACIÓN PERSONAL
+ * Modifica datos básicos y fuerza el refresco en el expediente y catálogo.
+ */
+export const actualizarPaciente = async (id: string, data: any) => {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No autorizado" };
+
+  try {
+    const pacienteActualizado = await db.patient.update({
+      where: { 
+        id,
+        nutritionistId: session.user.id 
+      },
+      data: {
+        nombre: data.nombre,
+        apellido: data.apellido,
+        foto: data.foto, // ✅ Uso del nombre de campo correcto
+      },
+    });
+
+    // 🚀 REVALIDACIÓN TOTAL: Evita el refresco manual de página
+    revalidatePath("/dashboard/pacientes");
+    revalidatePath(`/dashboard/pacientes/${id}`);
+    revalidatePath(`/dashboard/pacientes/${id}/historia`); 
+    
+    return { success: true, paciente: pacienteActualizado };
+  } catch (error) {
+    console.error("❌ Error al actualizar paciente:", error);
+    return { error: "No se pudieron guardar los cambios." };
+  }
+};
+
+/**
+ * 📈 OBTENER HISTORIAL CLÍNICO CONSOLIDADO
+ * Realiza un join masivo de todas las tablas clínicas vinculadas.
+ */
+export const getHistorialCompleto = async (pacienteId: string) => {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No autorizado" };
+
+  try {
+    const historial = await db.patient.findUnique({
+      where: { 
+        id: pacienteId, 
+        nutritionistId: session.user.id 
+      },
+      include: {
+        appointments: {
+          orderBy: { fechaHora: "desc" }, // Orden cronológico
+          include: {
+            medicion: true,     // ✅ Uso del singular (Prisma 6)
+            r24: true,          
+            laboratorios: true, 
+            plan: true          
+          }
+        }
+      }
+    });
+
+    return { success: true, historial };
+  } catch (error) {
+    console.error("❌ Error en consolidación:", error);
+    return { error: "Error al consolidar los datos clínicos de Hostinger." };
+  }
+};
+
+/**
+ * 🔍 BUSCAR PACIENTES (Filtro rápido)
  */
 export const buscarPacientesAction = async (query: string) => {
   const session = await auth();
-  
   if (!session?.user?.id) return { error: "No autorizado" };
 
   try {
@@ -109,18 +171,15 @@ export const buscarPacientesAction = async (query: string) => {
     });
     return { success: true, pacientes };
   } catch (error) {
-    console.error("❌ Error en buscarPacientesAction:", error);
     return { error: "Error al consultar pacientes." };
   }
 };
 
 /**
  * 🆔 OBTENER PACIENTE POR ID
- * Utilizado para cargar el expediente desde la URL en Nueva Consulta.
  */
 export const getPacienteById = async (id: string) => {
   const session = await auth();
-  
   if (!session?.user?.id) return { error: "No autorizado" };
 
   try {
@@ -132,17 +191,14 @@ export const getPacienteById = async (id: string) => {
     });
 
     if (!paciente) return { error: "Paciente no encontrado" };
-
     return { success: true, paciente };
   } catch (error) {
-    console.error("❌ Error en getPacienteById:", error);
     return { error: "Fallo al obtener el paciente." };
   }
 };
 
 /**
- * 🆔 GENERAR EXPEDIENTE AUTO
- * Calcula el siguiente folio basado en el historial del nutriólogo.
+ * 🆔 GENERAR EXPEDIENTE AUTOMÁTICO
  */
 export const generarExpedienteAuto = async () => {
   const session = await auth();
@@ -167,64 +223,44 @@ export const generarExpedienteAuto = async () => {
 // src/lib/actions/pacientes.ts
 
 /**
- * 🔄 ACTUALIZAR INFORMACIÓN PERSONAL
- * Permite editar Nombre, Foto y Edad (o Fecha de Nacimiento).
+ * 🔄 CAMBIAR STATUS
+ * Alterna entre ACTIVO e INACTIVO sin borrar datos.
  */
-export const actualizarPaciente = async (id: string, data: any) => {
+export const cambiarStatusPaciente = async (id: string, currentStatus: string) => {
   const session = await auth();
   if (!session?.user?.id) return { error: "No autorizado" };
 
   try {
-    const pacienteActualizado = await db.patient.update({
-      where: { 
-        id,
-        nutritionistId: session.user.id // 🛡️ Seguridad: Solo sus propios pacientes
-      },
-      data: {
-        nombre: data.nombre,
-        apellido: data.apellido,
-        // Si añadiste el campo edad o fechaNacimiento en el schema:
-        // edad: parseInt(data.edad), 
-      },
+    const newStatus = currentStatus === "ACTIVO" ? "INACTIVO" : "ACTIVO";
+    const actualizado = await db.patient.update({
+      where: { id, nutritionistId: session.user.id },
+      data: { status: newStatus as any },
     });
 
     revalidatePath(`/dashboard/pacientes/${id}`);
     revalidatePath("/dashboard/pacientes");
-    
-    return { success: true, paciente: pacienteActualizado };
+    return { success: true, status: actualizado.status };
   } catch (error) {
-    console.error("❌ Error al actualizar paciente:", error);
-    return { error: "No se pudieron guardar los cambios." };
+    return { error: "Error al cambiar el estatus." };
   }
 };
 
-// src/lib/actions/pacientes.ts
-export const getHistorialCompleto = async (pacienteId: string) => {
+/**
+ * 🗑️ ELIMINAR PACIENTE
+ * Borra permanentemente al paciente y su historial.
+ */
+export const eliminarPaciente = async (id: string) => {
   const session = await auth();
   if (!session?.user?.id) return { error: "No autorizado" };
 
   try {
-    const historial = await db.patient.findUnique({
-      where: { 
-        id: pacienteId, 
-        nutritionistId: session.user.id 
-      },
-      include: {
-        appointments: {
-          orderBy: { fechaHora: "desc" }, // Requisito: Orden Cronológico
-          include: {
-      medicion: true,     // ✅ Debe ser singular (según tu schema.prisma)
-      r24: true,          // ✅ Relación 1:1 definida en el modelo
-      laboratorios: true, // ✅ Relación 1:N definida en el modelo
-      plan: true          // ✅ Relación 1:1 definida en el modelo
-    }
-        }
-      }
+    await db.patient.delete({
+      where: { id, nutritionistId: session.user.id },
     });
 
-    return { success: true, historial };
+    revalidatePath("/dashboard/pacientes");
+    return { success: true };
   } catch (error) {
-    console.error("❌ Error en consolidación:", error);
-    return { error: "Error al conectar con Hostinger." };
+    return { error: "No se pudo eliminar al paciente." };
   }
 };

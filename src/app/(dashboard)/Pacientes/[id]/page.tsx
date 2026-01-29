@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import { 
   ArrowLeft, FileText, Clock, BarChart3, Calculator, 
   TestTube2, History, UserCircle, Loader2, ChevronRight, 
-  Pencil, X, Save 
+  Pencil, X, Save, Trash2, AlertTriangle 
 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
-import { getPacienteById, actualizarPaciente } from "@/lib/actions/pacientes";
+import { getPacienteById, actualizarPaciente, cambiarStatusPaciente, eliminarPaciente } from "@/lib/actions/pacientes";
 import { toast } from "sonner";
 
 export default function ExpedientePacientePage() {
@@ -17,14 +17,12 @@ export default function ExpedientePacientePage() {
   const [paciente, setPaciente] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
-  // Estados para Edición (Ajustados a tu Schema real)
+  // Estados para Edición
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [editData, setEditData] = useState({ 
-    nombre: "", 
-    apellido: "", 
-    foto: "" 
-  });
+  const [isStatusLoading, setIsStatusLoading] = useState(false);
+  const [editData, setEditData] = useState({ nombre: "", apellido: "", foto: "" });
 
   useEffect(() => {
     const cargarDatos = async () => {
@@ -47,7 +45,6 @@ export default function ExpedientePacientePage() {
 
   const handleSave = async () => {
     setIsSaving(true);
-    // Enviamos los datos usando 'foto' para que coincida con tu Prisma
     const res = await actualizarPaciente(id as string, editData);
     if (res.success) {
       setPaciente(res.paciente);
@@ -57,6 +54,30 @@ export default function ExpedientePacientePage() {
       toast.error(res.error || "Error al guardar");
     }
     setIsSaving(false);
+  };
+
+  const handleToggleStatus = async () => {
+    setIsStatusLoading(true);
+    const res = await cambiarStatusPaciente(id as string, paciente.status);
+    if (res.success) {
+      setPaciente({ ...paciente, status: res.status });
+      toast.success(`Estatus actualizado a ${res.status}`);
+    } else {
+      toast.error(res.error);
+    }
+    setIsStatusLoading(false);
+  };
+
+  const handleDelete = async () => {
+    setIsSaving(true);
+    const res = await eliminarPaciente(id as string);
+    if (res.success) {
+      toast.success("Paciente eliminado definitivamente");
+      router.push("/dashboard/pacientes");
+    } else {
+      toast.error(res.error);
+      setIsSaving(false);
+    }
   };
 
   if (loading) return (
@@ -99,15 +120,30 @@ export default function ExpedientePacientePage() {
                 <button onClick={() => setIsEditModalOpen(true)} className="p-2 rounded-full hover:bg-gray-100 text-gray-300 hover:text-nutri-main transition-all">
                   <Pencil size={18} />
                 </button>
+                {/* 🗑️ Botón Eliminar */}
+                <button onClick={() => setIsDeleteModalOpen(true)} className="p-2 rounded-full hover:bg-red-50 text-gray-300 hover:text-red-500 transition-all">
+                  <Trash2 size={18} />
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 bg-gray-50 px-6 py-3 rounded-2xl border border-gray-100">
-          <div className={`w-3 h-3 rounded-full ${paciente.status === 'ACTIVO' ? 'bg-green-500' : 'bg-gray-400'}`} />
-          <span className="font-bold text-gray-600 text-sm uppercase tracking-tighter">{paciente.status}</span>
-        </div>
+        {/* 🟢 Estatus Clickeable */}
+        <button 
+          onClick={handleToggleStatus}
+          disabled={isStatusLoading}
+          className={`flex items-center gap-3 px-6 py-3 rounded-2xl border transition-all ${
+            paciente.status === 'ACTIVO' 
+            ? 'bg-green-50 border-green-100 text-green-600 hover:bg-green-100' 
+            : 'bg-gray-50 border-gray-100 text-gray-400 hover:bg-gray-100'
+          }`}
+        >
+          {isStatusLoading ? <Loader2 className="animate-spin" size={14} /> : (
+            <div className={`w-3 h-3 rounded-full ${paciente.status === 'ACTIVO' ? 'bg-green-500' : 'bg-gray-400'}`} />
+          )}
+          <span className="font-bold text-sm uppercase tracking-tighter">{paciente.status}</span>
+        </button>
       </div>
 
       {/* 🗂️ BLOQUES */}
@@ -122,7 +158,7 @@ export default function ExpedientePacientePage() {
         ))}
       </div>
 
-      {/* 🛠️ MODAL DE EDICIÓN (Ajustado a tu Schema) */}
+      {/* 🛠️ MODAL DE EDICIÓN */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsEditModalOpen(false)} />
@@ -151,6 +187,31 @@ export default function ExpedientePacientePage() {
 
               <button onClick={handleSave} disabled={isSaving} className="w-full bg-nutri-main text-white py-4 rounded-2xl font-bold shadow-lg shadow-green-500/20 flex items-center justify-center gap-2 hover:scale-[1.02] transition-all">
                 {isSaving ? <Loader2 className="animate-spin" /> : <><Save size={20}/> Guardar cambios</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚠️ MODAL DE ELIMINACIÓN */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsDeleteModalOpen(false)} />
+          <div className="bg-white w-full max-w-md rounded-4xl p-10 shadow-2xl relative z-10 animate-in zoom-in duration-300 text-center">
+            <div className="w-20 h-20 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
+              <AlertTriangle size={40} />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2 font-display">¿Eliminar paciente?</h2>
+            <p className="text-gray-500 text-sm mb-8 px-4">Esta acción es irreversible. Se borrará permanentemente todo el historial clínico de <b>{paciente.nombre}</b>.</p>
+            
+            <div className="flex gap-4">
+              <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-4 rounded-2xl font-bold text-gray-400 hover:bg-gray-50 transition-all">Cancelar</button>
+              <button 
+                onClick={handleDelete}
+                disabled={isSaving}
+                className="flex-1 bg-red-500 text-white py-4 rounded-2xl font-bold shadow-lg shadow-red-500/30 hover:bg-red-600 transition-all flex items-center justify-center gap-2"
+              >
+                {isSaving ? <Loader2 className="animate-spin" size={18} /> : "Sí, eliminar"}
               </button>
             </div>
           </div>

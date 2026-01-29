@@ -7,10 +7,9 @@ import Image from "next/image";
 export default function HistoriaHeader({ paciente, onExport }: { paciente: any, onExport: () => void }) {
   const router = useRouter();
 
-  // 🔙 Validación de retorno solicitada
+  // 🚀 Navegación directa sin mensajes de interrupción
   const handleBack = () => {
-    const confirm = window.confirm("¿Estás seguro de volver al expediente? Se cerrará el historial consolidado.");
-    if (confirm) router.push(`/dashboard/pacientes/${paciente.id}`);
+    router.push(`/dashboard/pacientes/${paciente.id}`);
   };
 
   return (

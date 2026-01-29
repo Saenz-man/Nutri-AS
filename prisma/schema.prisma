@@ -48,62 +48,116 @@ model Patient {
 
 // 📅 CITA: El eje central del Historial Clínico
 model Appointment {
-  id              String        @id @default(uuid())
+  id              String           @id @default(uuid())
   fechaHora       DateTime
-  motivo          String?       @default("Consulta de Seguimiento")
-  status          String        @default("PENDIENTE") // PENDIENTE, ATENDIDA, CANCELADA, NO_LLEGO
+  motivo          String?          @default("Consulta de Seguimiento")
+  status          String           @default("PENDIENTE") // PENDIENTE, ATENDIDA, CANCELADA, NO_LLEGO
   patientId       String
   nutritionistId  String
-  createdAt       DateTime      @default(now())
+  createdAt       DateTime         @default(now())
   
   // 🔗 RELACIONES CLÍNICAS (Para el Timeline y KPIs)
-  medicion        Medicion?     // Datos antropométricos de esta cita
-  r24             R24?          // Recordatorio de 24 horas de esta cita
-  laboratorios    Laboratorio[] // Estudios cargados en esta fecha
+  medicion        Medicion?        // Datos antropométricos de esta cita
+  r24             R24?             // Recordatorio de 24 horas de esta cita
+  laboratorios    Laboratorio[]    // Estudios cargados en esta fecha
   plan            PlanAlimenticio? // Dieta asignada en esta consulta
 
-  nutritionist    User          @relation(fields: [nutritionistId], references: [id])
-  patient         Patient       @relation(fields: [patientId], references: [id])
+  nutritionist    User             @relation(fields: [nutritionistId], references: [id])
+  patient         Patient          @relation(fields: [patientId], references: [id])
 }
 
-// 📏 BLOQUE: MEDICIONES (Para KPIs de Progreso)
+// 📏 BLOQUE: MEDICIONES ANTROPOMÉTRICAS COMPLETAS
 model Medicion {
-  id            String      @id @default(uuid())
-  peso          Float
-  talla         Float
-  imc           Float
-  grasa         Float?      // % Grasa solicitado
-  musculo       Float?      // % Músculo solicitado
-  appointmentId String      @unique
-  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  id                String      @id @default(uuid())
+  appointmentId     String      @unique
+  appointment       Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  // 🟢 Básicos (4 Mediciones)
+  peso              Float?
+  talla             Float?
+  tallaSentado      Float?
+  envergadura       Float?
+
+  // 🔴 Panículos / Pliegues (8 Mediciones en mm)
+  triceps           Float?
+  subescapular      Float?
+  biceps            Float?
+  crestaIliaca      Float?
+  supraespinal      Float?
+  abdominal         Float?
+  muslo             Float?
+  pierna            Float?
+
+  // 🔵 Bioimpedancia (Báscula Inteligente)
+  grasaEquipo       Float?      // % Grasa directo del equipo
+  agua              Float?      // % Agua corporal
+  grasaVisceral     Float?      // Nivel 1-20
+  edadMetabolica    Int?
+  masaOsea          Float?
+
+  // 🔘 Circunferencias, Diámetros e Indicadores (cm)
+  imc               Float?      // Índice de Masa Corporal
+  icc               Float?      // Índice Cintura-Cadera
+  cintura           Float?
+  cadera            Float?
+  brazoR            Float?      // Brazo relajado
+  brazoC            Float?      // Brazo contraído
+  piernaCirc        Float?      // Circunferencia de pierna (distinto al panículo)
+  estiloideo        Float?      // Diámetro de muñeca
+  femur             Float?      // Diámetro de fémur
+  humero            Float?      // Diámetro de húmero
+
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 }
 
 // 🧪 BLOQUE: ESTUDIOS DE LABORATORIO
 model Laboratorio {
-  id            String      @id @default(uuid())
-  parametro     String      // Ej: "Glucosa"
-  valor         Float
-  unidad        String      // Ej: "mg/dL"
-  appointmentId String
-  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  id              String      @id @default(uuid())
+  appointmentId   String      @unique
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  // 🧪 Perfil Bioquímico y Nutricional
+  glucosa         Float?
+  urea            Float?
+  creatinina      Float?
+  hemoglobina     Float?
+  ferritina       Float?
+  proteinasTotales Float?
+
+  // 🥩 Perfil Lipídico
+  colesterolTotal Float?
+  hdl             Float?
+  ldl             Float?
+  trigliceridos   Float?
+  indiceAterogenico Float?
+
+  // 🚽 EGO (Examen General de Orina)
+  ph              Float?
+  densidad        Float?
+  aspecto         String?
+  sedimento       String?
+
+  pdfUrl          String?      // 📂 Para el adjunto opcional
+  createdAt       DateTime     @default(now())
 }
 
 // 🍎 BLOQUE: R24 & SMAE
 model R24 {
-  id            String      @id @default(uuid())
-  consumoKcal   Float       // Consumo calórico detectado
-  notas         String?
-  appointmentId String      @unique
-  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  id              String      @id @default(uuid())
+  consumoKcal     Float       // Consumo calórico detectado
+  notas           String?
+  appointmentId   String      @unique
+  appointment     Appointment @relation(fields: [appointmentId], references: [id])
 }
 
 // 🥗 BLOQUE: CÁLCULO DIETÉTICO / PLANES
 model PlanAlimenticio {
-  id            String      @id @default(uuid())
-  nombre        String      // Ej: "Plan Hiperproteico V1"
-  detalles      String?
-  appointmentId String      @unique
-  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  id              String      @id @default(uuid())
+  nombre          String      // Ej: "Plan Hiperproteico V1"
+  detalles        String?
+  appointmentId   String      @unique
+  appointment     Appointment @relation(fields: [appointmentId], references: [id])
 }
 
 // 📝 CONSULTA: Registro rápido histórico
