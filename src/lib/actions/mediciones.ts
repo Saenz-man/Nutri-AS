@@ -46,38 +46,44 @@ export const guardarMedicionAction = async (pacienteId: string, data: any, fecha
     'peso', 'talla', 'tallaSentado', 'envergadura', 
     'triceps', 'subescapular', 'biceps', 'crestaIliaca', 
     'supraespinal', 'abdominal', 'muslo', 'pierna',
-    'grasaEquipo','musculo', 'agua', 'grasaVisceral', 'masaOsea',
+    'grasaEquipo', 'musculo', 'agua', 'grasaVisceral', 'masaOsea',
     'imc', 'icc', 'cintura', 'cadera', 'brazoR', 'brazoC', 
     'piernaCirc', 'estiloideo', 'femur', 'humero'
   ];
 
   numericFields.forEach(field => {
     const value = data[field];
-    if (value !== undefined && value !== "") {
-      sanitizedData[field] = parseFloat(value);
+    
+    // 🛡️ BLINDAJE CONTRA NaN: Solo guardamos si es un número válido
+    if (value !== undefined && value !== "" && value !== null) {
+      const parsedValue = parseFloat(value);
+      sanitizedData[field] = isNaN(parsedValue) ? null : parsedValue;
     } else {
       sanitizedData[field] = null;
     }
   });
 
+  // Manejo de Edad Metabólica (Debe ser Entero)
   if (data.edadMetabolica && data.edadMetabolica !== "") {
-    sanitizedData.edadMetabolica = parseInt(data.edadMetabolica);
+    const parsedEdad = parseInt(data.edadMetabolica);
+    sanitizedData.edadMetabolica = isNaN(parsedEdad) ? null : parsedEdad;
   } else {
     sanitizedData.edadMetabolica = null;
   }
 
   try {
-    // 1. Crear cita técnica
+    // 1. Crear cita técnica vinculada
     const appointment = await db.appointment.create({
       data: {
         patientId: pacienteId,
         nutritionistId: session.user.id,
         fechaHora: new Date(fecha),
         status: "ATENDIDA",
-        motivo: "Evaluación de Composición Corporal",      }
+        motivo: "Evaluación de Composición Corporal",
+      }
     });
 
-    // 2. Crear medición vinculada
+    // 2. Crear medición técnica
     await db.medicion.create({
       data: {
         ...sanitizedData,
@@ -85,8 +91,7 @@ export const guardarMedicionAction = async (pacienteId: string, data: any, fecha
       }
     });
 
-    // ✅ 3. ACTUALIZACIÓN GLOBAL DEL PACIENTE
-    // Guardamos la talla en el perfil principal para que el IMC no sea 0.0
+    // ✅ 3. ACTUALIZACIÓN GLOBAL (IMC y Talla en el expediente)
     if (sanitizedData.talla) {
       await db.patient.update({
         where: { id: pacienteId },
@@ -94,13 +99,15 @@ export const guardarMedicionAction = async (pacienteId: string, data: any, fecha
       });
     }
 
+    // 🔄 REVALIDACIÓN DE RUTAS (Asegura que el dashboard se actualice)
     revalidatePath(`/dashboard/pacientes/${pacienteId}/historia`);
-    revalidatePath(`/dashboard/pacientes/${pacienteId}`); // Refrescamos el perfil
+    revalidatePath(`/dashboard/pacientes/${pacienteId}`); 
     revalidatePath("/dashboard/pacientes");
     
     return { success: true };
   } catch (error) {
-    console.error("❌ Error en Hostinger:", error);
+    // 🕵️ DEBUG: Esto te dirá exactamente qué campo está fallando en tu terminal
+    console.error("❌ Error detallado en Prisma/Hostinger:", error);
     return { error: "Error al guardar los datos numéricos." };
   }
 };
