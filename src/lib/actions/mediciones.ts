@@ -1,12 +1,12 @@
 "use server";
 
-import { db } from "@/lib/db"; // ✅ Importación de la base de datos
-import { auth } from "@/auth"; // ✅ Importación de autenticación
-import { revalidatePath } from "next/cache"; // ✅ Importación para limpiar caché
+import { db } from "@/lib/db";
+import { auth } from "@/auth";
+import { revalidatePath } from "next/cache";
 
 /**
  * 🔍 VERIFICAR EXISTENCIA POR DÍA
- * Exportada para que page.tsx pueda usarla.
+ * Evita duplicados si el nutriólogo intenta guardar dos veces el mismo día.
  */
 export const checkMedicionDia = async (pacienteId: string, fecha: string) => {
   const session = await auth();
@@ -22,10 +22,7 @@ export const checkMedicionDia = async (pacienteId: string, fecha: string) => {
     where: {
       appointment: {
         patientId: pacienteId,
-        fechaHora: {
-          gte: inicioDia,
-          lte: finDia
-        }
+        fechaHora: { gte: inicioDia, lte: finDia }
       }
     }
   });
@@ -34,8 +31,8 @@ export const checkMedicionDia = async (pacienteId: string, fecha: string) => {
 };
 
 /**
- * 💾 GUARDAR MEDICIÓN COMPLETA
- * Incluye sanitización para evitar errores de String vs Float en Prisma 6.
+ * 💾 GUARDAR MEDICIÓN COMPLETA (MODO CIENTÍFICO)
+ * Procesa pliegues, bioimpedancia y realiza cálculos automáticos.
  */
 export const guardarMedicionAction = async (pacienteId: string, data: any, fecha: string) => {
   const session = await auth();
@@ -51,10 +48,9 @@ export const guardarMedicionAction = async (pacienteId: string, data: any, fecha
     'piernaCirc', 'estiloideo', 'femur', 'humero'
   ];
 
+  // 1. Sanitización de datos (Conversión a Float y manejo de NaN)
   numericFields.forEach(field => {
     const value = data[field];
-    
-    // 🛡️ BLINDAJE CONTRA NaN: Solo guardamos si es un número válido
     if (value !== undefined && value !== "" && value !== null) {
       const parsedValue = parseFloat(value);
       sanitizedData[field] = isNaN(parsedValue) ? null : parsedValue;
@@ -63,7 +59,20 @@ export const guardarMedicionAction = async (pacienteId: string, data: any, fecha
     }
   });
 
-  // Manejo de Edad Metabólica (Debe ser Entero)
+  // 2. 🧬 LÓGICA DE CÁLCULO AUTOMÁTICO (SIRI)
+  // Si falta el valor del equipo, calculamos %GC por suma de 4 pliegues
+  if (!sanitizedData.grasaEquipo && sanitizedData.triceps && sanitizedData.subescapular && sanitizedData.biceps && sanitizedData.crestaIliaca) {
+    const suma4 = sanitizedData.triceps + sanitizedData.subescapular + sanitizedData.biceps + sanitizedData.crestaIliaca;
+    
+    // Densidad corporal (Fórmula de Durnin & Womersley)
+    const densidad = 1.1599 - (0.0717 * Math.log10(suma4)); 
+    
+    // Ecuación de Siri: ((4.95 / D) - 4.50) * 100
+    const grasaSiri = ((4.95 / densidad) - 4.50) * 100;
+    sanitizedData.grasaEquipo = parseFloat(grasaSiri.toFixed(2));
+  }
+
+  // 3. Edad Metabólica (Conversión a Int)
   if (data.edadMetabolica && data.edadMetabolica !== "") {
     const parsedEdad = parseInt(data.edadMetabolica);
     sanitizedData.edadMetabolica = isNaN(parsedEdad) ? null : parsedEdad;
@@ -72,10 +81,10 @@ export const guardarMedicionAction = async (pacienteId: string, data: any, fecha
   }
 
   try {
-    // 1. Crear cita técnica vinculada
+    // 1. Crear cita técnica en Hostinger
     const appointment = await db.appointment.create({
       data: {
-        patientId: pacienteId,
+        patientId: pacienteId, // ✅ CORRECCIÓN TS 2552: Nombre consistente
         nutritionistId: session.user.id,
         fechaHora: new Date(fecha),
         status: "ATENDIDA",
@@ -83,7 +92,7 @@ export const guardarMedicionAction = async (pacienteId: string, data: any, fecha
       }
     });
 
-    // 2. Crear medición técnica
+    // 2. Crear registro de medición técnica
     await db.medicion.create({
       data: {
         ...sanitizedData,
@@ -91,7 +100,7 @@ export const guardarMedicionAction = async (pacienteId: string, data: any, fecha
       }
     });
 
-    // ✅ 3. ACTUALIZACIÓN GLOBAL (IMC y Talla en el expediente)
+    // 3. Actualizar talla en el expediente del paciente
     if (sanitizedData.talla) {
       await db.patient.update({
         where: { id: pacienteId },
@@ -99,15 +108,13 @@ export const guardarMedicionAction = async (pacienteId: string, data: any, fecha
       });
     }
 
-    // 🔄 REVALIDACIÓN DE RUTAS (Asegura que el dashboard se actualice)
+    // 🔄 Revalidar para actualizar indicadores en el MacBook Pro
+    revalidatePath(`/dashboard/pacientes/${pacienteId}`);
     revalidatePath(`/dashboard/pacientes/${pacienteId}/historia`);
-    revalidatePath(`/dashboard/pacientes/${pacienteId}`); 
-    revalidatePath("/dashboard/pacientes");
     
     return { success: true };
   } catch (error) {
-    // 🕵️ DEBUG: Esto te dirá exactamente qué campo está fallando en tu terminal
-    console.error("❌ Error detallado en Prisma/Hostinger:", error);
+    console.error("❌ Error en Hostinger:", error);
     return { error: "Error al guardar los datos numéricos." };
   }
 };

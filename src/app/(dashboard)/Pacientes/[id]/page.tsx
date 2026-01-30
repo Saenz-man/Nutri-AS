@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { 
   ArrowLeft, FileText, Clock, BarChart3, Calculator, 
   TestTube2, History, UserCircle, Loader2, ChevronRight, 
-  Pencil, X, Save, Trash2, AlertTriangle, Scale, Activity, Zap
+  Pencil, X, Save, Trash2, AlertTriangle, Scale, Activity, Zap,
+  Droplets, AlertCircle, Bone // 👈 Agregamos estos tres
 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
@@ -23,6 +24,12 @@ export default function ExpedientePacientePage() {
   const [paciente, setPaciente] = useState<any>(null);
   const [ultimaMedicion, setUltimaMedicion] = useState<any>(null); // ✅ Almacena bioimpedancia reciente
   const [loading, setLoading] = useState(true);
+
+  const indicadoresExtra = [
+  { label: 'Agua Corporal', val: ultimaMedicion?.agua ? `${ultimaMedicion.agua}%` : "-- %", icon: Droplets, color: 'text-blue-400' },
+  { label: 'Grasa Visceral', val: ultimaMedicion?.grasaVisceral || "--", icon: AlertCircle, color: 'text-red-500' },
+  { label: 'Masa Ósea', val: ultimaMedicion?.masaOsea ? `${ultimaMedicion.masaOsea} kg` : "-- kg", icon: Bone, color: 'text-gray-400' },
+];
   
   // Estados para Edición y Modales
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);

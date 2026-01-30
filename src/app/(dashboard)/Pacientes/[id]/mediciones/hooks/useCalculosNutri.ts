@@ -1,15 +1,29 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { toast } from "sonner";
+import { 
+  calcularIMC, 
+  calcularICC, 
+  obtenerClasificacionIMC,
+  calcularGrasaSiri, 
+  calcularMasaOseaDobeln,
+  calcularMasaMuscularSimplificada 
+} from "../lib/formulas";
 
-export const useCalculosNutri = (initialValues = {}) => {
-  const [values, setValues] = useState({
-    // 🟢 Básicos (4)
+/**
+ * 🧠 HOOK: useCalculosNutri
+ * Gestiona el estado de los 24+ campos antropométricos y ejecuta fórmulas ISAK.
+ */
+export const useCalculosNutri = (initialAge: number = 0) => {
+  const [values, setValues] = useState<any>({
+    // 🟢 MEDIDAS BÁSICAS (4)
     peso: "",
     talla: "",
     tallaSentado: "",
     envergadura: "",
-    // 🔴 Panículos/Pliegues en mm (8)
+
+    // 🔴 PANÍCULOS / PLIEGUES EN MM (8)
     triceps: "",
     subescapular: "",
     biceps: "",
@@ -18,54 +32,97 @@ export const useCalculosNutri = (initialValues = {}) => {
     abdominal: "",
     muslo: "",
     pierna: "",
-    // 🔵 Otros campos para cálculos
-    cintura: "",
-    cadera: "",
+
+    // 🟠 DATOS DE BIOIMPEDANCIA
     grasaEquipo: "",
     agua: "",
     grasaVisceral: "",
-    edadMetabolica: "",
+    edadMetabolica: initialAge, // Se pre-llena con la edad del paciente
     masaOsea: "",
+    musculo: "", // Tejido Magro calculado
+
+    // 🔵 CIRCUNFERENCIAS Y DIÁMETROS
+    cintura: "",
+    cadera: "",
     brazoR: "",
     brazoC: "",
-    estiloideo: "",
-    femur: "",
-    humero: "",
-    ...initialValues
+    piernaCirc: "", // Perímetro de pierna
+    estiloideo: "", // Diámetro muñeca
+    femur: "",      // Diámetro fémur
+    humero: ""      // Diámetro húmero
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // 📐 CÁLCULO DE INDICADORES EN TIEMPO REAL
+  /**
+   * 🎂 SINCRONIZACIÓN DE EDAD
+   * Actualiza el campo de edad cuando los datos del paciente cargan desde Hostinger.
+   */
+  useEffect(() => {
+    if (initialAge > 0) {
+      setValues((prev: any) => ({ ...prev, edadMetabolica: initialAge }));
+    }
+  }, [initialAge]);
+
+  /**
+   * 📐 INDICADORES EN TIEMPO REAL (IMC e ICC)
+   * Se recalculan automáticamente al escribir peso, talla, cintura o cadera.
+   */
   const calculos = useMemo(() => {
     const p = parseFloat(values.peso);
-    const t = parseFloat(values.talla) / 100; // cm a m
-
-    let imc = 0;
-    let clasificacion = "Pendiente";
-    let icc = 0;
-
-    // Fórmula: $IMC = \frac{Peso(kg)}{Estatura(m)^2}$
-    if (p > 0 && t > 0) {
-      imc = parseFloat((p / (t * t)).toFixed(2));
-      
-      if (imc < 18.5) clasificacion = "Bajo Peso";
-      else if (imc < 25) clasificacion = "Normal";
-      else if (imc < 30) clasificacion = "Sobrepeso";
-      else clasificacion = "Obesidad";
-    }
-
-    // Fórmula: $ICC = \frac{Cintura(cm)}{Cadera(cm)}$
+    const t = parseFloat(values.talla);
     const cin = parseFloat(values.cintura);
     const cad = parseFloat(values.cadera);
-    if (cin > 0 && cad > 0) {
-      icc = parseFloat((cin / cad).toFixed(2));
-    }
+
+    const imc = calcularIMC(p, t);
+    const clasificacion = obtenerClasificacionIMC(imc);
+    const icc = calcularICC(cin, cad);
 
     return { imc, clasificacion, icc };
   }, [values.peso, values.talla, values.cintura, values.cadera]);
 
-  // 🛡️ VALIDACIÓN DE RANGOS
+  /**
+   * 🧬 BOTÓN: CALCULAR RESULTADOS
+   * Ejecuta el motor científico de Nutri-AS para obtener composición corporal.
+   */
+  const ejecutarFormulasCientificas = () => {
+    const p = parseFloat(values.peso);
+    const t = parseFloat(values.talla);
+
+    // 1. % Grasa por Siri (Suma de 4 pliegues básicos)
+    const g = calcularGrasaSiri(
+      parseFloat(values.triceps), 
+      parseFloat(values.biceps),
+      parseFloat(values.subescapular), 
+      parseFloat(values.crestaIliaca)
+    );
+    
+    // 2. Masa Ósea por Von Dobeln (Talla + Muñeca + Fémur)
+    const o = calcularMasaOseaDobeln(
+      t, 
+      parseFloat(values.estiloideo), 
+      parseFloat(values.femur)
+    );
+
+    // 3. Masa Muscular (Tejido Magro) por fraccionamiento
+    const m = calcularMasaMuscularSimplificada(p, g, o);
+
+    if (g > 0 || o > 0 || m > 0) {
+      setValues((prev: any) => ({ 
+        ...prev, 
+        grasaEquipo: g > 0 ? g.toFixed(2) : prev.grasaEquipo, 
+        masaOsea: o > 0 ? o.toFixed(2) : prev.masaOsea,
+        musculo: m > 0 ? m.toFixed(2) : prev.musculo
+      }));
+      toast.success("Composición corporal (Grasa, Músculo y Hueso) calculada con éxito.");
+    } else {
+      toast.error("Faltan datos críticos para aplicar las fórmulas ISAK.");
+    }
+  };
+
+  /**
+   * 🛡️ VALIDACIÓN DE RANGOS CLÍNICOS
+   */
   const validarCampo = (name: string, value: string) => {
     const val = parseFloat(value);
     let error = "";
@@ -76,9 +133,12 @@ export const useCalculosNutri = (initialValues = {}) => {
     setErrors(prev => ({ ...prev, [name]: error }));
   };
 
+  /**
+   * ⌨️ MANEJADOR DE ENTRADA
+   */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setValues(prev => ({ ...prev, [name]: value }));
+    setValues((prev: any) => ({ ...prev, [name]: value }));
   };
 
   return {
@@ -87,6 +147,7 @@ export const useCalculosNutri = (initialValues = {}) => {
     calculos,
     handleChange,
     validarCampo,
+    ejecutarFormulasCientificas, // Función para el botón naranja
     setValues
   };
 };
