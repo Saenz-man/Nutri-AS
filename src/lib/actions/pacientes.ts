@@ -238,20 +238,54 @@ export const cambiarStatusPaciente = async (id: string, currentStatus: string) =
 };
 
 /**
- * 🗑️ ELIMINAR PACIENTE
+ * 🗑️ ELIMINAR PACIENTE (Borrado en Cascada Manual)
  */
 export const eliminarPaciente = async (id: string) => {
   const session = await auth();
   if (!session?.user?.id) return { error: "No autorizado" };
 
   try {
-    await db.patient.delete({
-      where: { id, nutritionistId: session.user.id },
+    await db.$transaction(async (tx) => {
+      // 1. Obtener todas las citas del paciente para identificar sus IDs
+      const appointments = await tx.appointment.findMany({
+        where: { patientId: id },
+        select: { id: true }
+      });
+      const appointmentIds = appointments.map(a => a.id);
+
+      // 2. Borrar modelos que NO tienen 'onDelete: Cascade' en el schema
+      // Borrar Recordatorios 24h (R24)
+      await tx.r24.deleteMany({
+        where: { appointmentId: { in: appointmentIds } }
+      });
+
+      // Borrar Planes Alimenticios
+      await tx.planAlimenticio.deleteMany({
+        where: { appointmentId: { in: appointmentIds } }
+      });
+
+      // 3. Borrar Consultas rápidas (Consultation)
+      await tx.consultation.deleteMany({
+        where: { patientId: id }
+      });
+
+      // 4. Borrar Citas (Appointment)
+      // Nota: Esto disparará el Cascade automático para 'Medicion' y 'Laboratorio'
+      // ya que ellos SI tienen 'onDelete: Cascade' en tu schema.prisma
+      await tx.appointment.deleteMany({
+        where: { patientId: id }
+      });
+
+      // 5. Finalmente, borrar al Paciente
+      await tx.patient.delete({
+        where: { id, nutritionistId: session.user.id },
+      });
     });
 
     revalidatePath("/dashboard/pacientes");
     return { success: true };
   } catch (error) {
-    return { error: "No se pudo eliminar al paciente." };
+    console.error("❌ Error en eliminación completa:", error);
+    return { error: "No se pudo eliminar al paciente debido a registros protegidos." };
   }
 };
