@@ -2,29 +2,33 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { PDFDownloadLink } from "@react-pdf/renderer"; // 👈 Para la descarga del reporte
 import LaboratorioHeader from "./components/LaboratorioHeader";
 import PerfilBioquimico from "./components/PerfilBioquimico";
 import PerfilLipidico from "./components/PerfilLipidico";
 import PerfilNutricional from "./components/PerfilNutricional";
 import ExamenOrina from "./components/ExamenOrina";
 import TablaLaboratorio from "./components/TablaLaboratorio";
+import ModalExito from "./components/ModalExito"; // 👈 Tu nuevo modal de labs
+import LaboratorioPDF from "@/components/pdf/LaboratorioPDF"; // 👈 Tu nuevo formato PDF
 import { useLaboratorioLogic } from "./hooks/useLaboratorioLogic";
 import { toast } from "sonner";
 import { guardarLaboratorioAction } from "@/lib/actions/laboratorios";
-import { getHistorialCompleto } from "@/lib/actions/pacientes";
+import { getHistorialCompleto, getPacienteById } from "@/lib/actions/pacientes"; // 👈 Añadido getPacienteById
 import { Beaker, Activity, Droplets, FlaskConical, ListChecks } from "lucide-react";
 
 export default function LaboratoriosPage() {
   const { id } = useParams();
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
+  const [showModal, setShowModal] = useState(false); // 👈 Control del modal de éxito
   const [activeTab, setActiveTab] = useState("tabla");
   const [ultimoEstudio, setUltimoEstudio] = useState<any>(null);
+  const [pacienteData, setPacienteData] = useState<any>(null); // 👈 Datos para el PDF
 
-  // 🛡️ FECHA DE REGISTRO INMUTABLE: Siempre hoy
+  // 🛡️ FECHA DE REGISTRO INMUTABLE
   const fecha = new Date().toISOString().split('T')[0];
 
-  // 🧪 Hook con la lógica de diagnóstico y semáforos
   const { 
     values, 
     setValues, 
@@ -35,12 +39,20 @@ export default function LaboratoriosPage() {
     hasChanges 
   } = useLaboratorioLogic();
 
-  // 🔄 CARGA DE ANTECEDENTES: Para la columna "Anterior"
+  // 🔄 CARGA DE DATOS DEL PACIENTE (Para el PDF)
+  useEffect(() => {
+    if (id) {
+      getPacienteById(id as string).then(res => {
+        if (res.success) setPacienteData(res.paciente);
+      });
+    }
+  }, [id]);
+
+  // 🔄 CARGA DE ANTECEDENTES
   useEffect(() => {
     const cargarHistorico = async () => {
       const res = await getHistorialCompleto(id as string);
       if (res.success && res.historial?.appointments) {
-        // Buscamos el estudio más reciente cargado en Hostinger
         const citaConLab = res.historial.appointments.find((c: any) => c.laboratorios);
         if (citaConLab) setUltimoEstudio(citaConLab.laboratorios);
       }
@@ -53,15 +65,11 @@ export default function LaboratoriosPage() {
   };
 
   /**
-   * 💾 GUARDADO CON CANDADO DE SEGURIDAD
+   * 💾 GUARDADO ACTUALIZADO
    */
   const handleSave = async () => {
-    // 🛡️ VALIDACIÓN: No permite registros vacíos
     if (!hasChanges) {
-      toast.info("No se registran cambios en el formulario.", {
-        description: "Ingresa al menos un valor de laboratorio antes de guardar.",
-        icon: <Activity size={16} className="text-blue-500" />
-      });
+      toast.info("No hay cambios para guardar.");
       return;
     }
 
@@ -70,14 +78,26 @@ export default function LaboratoriosPage() {
       const res = await guardarLaboratorioAction(id as string, values, fecha);
       if (res.success) {
         toast.success("Expediente actualizado con éxito.");
-        router.push(`/dashboard/Pacientes/${id}/historia`);
+        setShowModal(true); // 👈 EN LUGAR DE REDIRIGIR, MOSTRAMOS EL MODAL
       } else {
-        toast.error(res.error || "Fallo al sincronizar con Hostinger.");
+        toast.error(res.error || "Fallo al sincronizar.");
       }
     } catch (error) {
-      toast.error("Fallo crítico en el servidor.");
+      toast.error("Error crítico en el servidor.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // 📄 PREPARACIÓN DE DATOS PARA EL PDF
+  const dataForPdf = {
+    paciente: pacienteData || {},
+    values: values,
+    nutricionista: {
+      nombre: "Edgar Uriel",
+      apellido: "Saenz Bobadilla",
+      cedula: "---",
+      telefono: "4615976167"
     }
   };
 
@@ -92,7 +112,6 @@ export default function LaboratoriosPage() {
   return (
     <div className="max-w-[98%] mx-auto space-y-6 pb-20 animate-in fade-in duration-500">
       
-      {/* 🔝 HEADER: Sin setFecha para evitar el error TS 2322 */}
       <LaboratorioHeader 
         id={id as string} 
         onSave={handleSave} 
@@ -118,7 +137,7 @@ export default function LaboratoriosPage() {
         ))}
       </div>
 
-      {/* 🧪 CONTENIDO DEL MÓDULO */}
+      {/* 🧪 CONTENIDO */}
       <div className="min-h-[600px] animate-in slide-in-from-bottom-4 duration-500">
         {activeTab === "tabla" && (
           <TablaLaboratorio 
@@ -146,13 +165,28 @@ export default function LaboratoriosPage() {
         )}
       </div>
 
-      {/* 🚨 SEMÁFORO DE ALERTAS FLOTANTE */}
+      {/* 🚨 SEMÁFORO DE ALERTAS */}
       {totalAlertas > 0 && (
         <div className="fixed bottom-10 right-10 bg-red-500 text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-4 animate-bounce z-50">
           <Activity size={20} className="animate-pulse" />
           <span className="font-black text-xs uppercase italic">Alerta: {totalAlertas} niveles críticos detectados</span>
         </div>
       )}
+
+      {/* 🟢 MODAL DE ÉXITO CON DESCARGA DE PDF */}
+      <ModalExito 
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        pacienteId={id}
+        downloadLink={
+          <PDFDownloadLink
+            document={<LaboratorioPDF data={dataForPdf} />}
+            fileName={`Laboratorios_${pacienteData?.nombre || 'Paciente'}.pdf`}
+          >
+            {({ loading }) => (loading ? "Generando..." : "Descargar Reporte")}
+          </PDFDownloadLink>
+        }
+      />
     </div>
   );
 }

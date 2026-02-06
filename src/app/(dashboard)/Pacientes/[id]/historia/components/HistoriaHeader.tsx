@@ -1,24 +1,24 @@
-"use client"; // ✅ Indispensable para manejar eventos de clic
+// src/app/(dashboard)/Pacientes/[id]/historia/components/HistoriaHeader.tsx
+"use client";
 
 import { FileDown, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import ExpedienteCompletoPDF from "@/components/pdf/ExpedienteCompletoPDF";
 
 interface HeaderProps {
-  paciente: {
-    nombre: string;
-    apellido: string;
-    expediente: string;
-  };
+  paciente: any; // Ahora recibe el objeto completo con appointments
 }
 
 export default function HistoriaHeader({ paciente }: HeaderProps) {
   const router = useRouter();
 
-  // ✅ La función de exportación vive aquí, en el cliente
-  const handleExport = () => {
-    console.log("Iniciando exportación de PDF para:", paciente.nombre);
-    // Aquí integraremos jspdf o tu lógica de impresión más adelante
-    alert(`Generando reporte profesional de ${paciente.nombre} ${paciente.apellido}...`);
+  // Datos dinámicos del nutriólogo
+  const nutricionista = {
+    nombre: "Edgar Uriel",
+    apellido: "Saenz Bobadilla",
+    cedula: "---",
+    telefono: "4615976167"
   };
 
   return (
@@ -41,13 +41,16 @@ export default function HistoriaHeader({ paciente }: HeaderProps) {
         </div>
       </div>
 
-      <button 
-        onClick={handleExport}
-        className="flex items-center gap-2 bg-gray-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-lg active:scale-95"
-      >
+      {/* 📥 BOTÓN DE EXPORTACIÓN DINÁMICO */}
+      <div className="flex items-center gap-2 bg-gray-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-lg active:scale-95 cursor-pointer">
         <FileDown size={16} />
-        Exportar Reporte Completo (PDF)
-      </button>
+        <PDFDownloadLink
+          document={<ExpedienteCompletoPDF paciente={paciente} nutricionista={nutricionista} />}
+          fileName={`Expediente_${paciente.nombre}_${paciente.apellido}.pdf`}
+        >
+          {({ loading }) => (loading ? "Preparando Archivos..." : "Exportar Reporte Completo (PDF)")}
+        </PDFDownloadLink>
+      </div>
     </div>
   );
 }
