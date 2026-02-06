@@ -1,3 +1,5 @@
+//xrc/app/(dashboard)/Pacientes/[id]/laboratorios/components/ExamenOrina.tsx
+
 "use client";
 
 export default function ExamenOrina({ values, onChange }: any) {

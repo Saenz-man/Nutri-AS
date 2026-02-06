@@ -1,3 +1,4 @@
+//src/app/(dashboard)/Pacientes/[id]/laboratorios/components/PerfilBioquimico.tsx
 "use client";
 
 export default function PerfilBioquimico({ values, onChange, getStatusColor }: any) {

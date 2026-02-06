@@ -1,3 +1,4 @@
+//src/app/(dashboard)/Pacientes/[id]/laboratorios/components/PerfilNutricional.tsx
 "use client";
 
 export default function PerfilNutricional({ values, onChange, getStatusColor }: any) {

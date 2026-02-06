@@ -8,6 +8,7 @@ export interface RangoLab {
 }
 
 export const RANGOS_LAB: Record<string, RangoLab> = {
+  // Bioquímico
   sodio: { min: 136, max: 145, unit: "mEq/L" },
   potasio: { min: 3.5, max: 5.5, unit: "mEq/L" },
   cloro: { min: 95, max: 105, unit: "mEq/L" },
@@ -16,6 +17,7 @@ export const RANGOS_LAB: Record<string, RangoLab> = {
   hbGlucosilada: { min: 5, max: 6, unit: "%" },
   creatinina: { min: 0.6, max: 1.2, unit: "mg/dL" },
   urea: { min: 10, max: 40, unit: "mg/dL" },
+  // Lipídico
   colesterolTotal: { min: 120, max: 199, unit: "mg/dL" },
   hdl: { min: 40, max: 50, unit: "mg/dL" },
   ldl: { min: 65, max: 150, unit: "mg/dL" },
@@ -25,43 +27,84 @@ export const RANGOS_LAB: Record<string, RangoLab> = {
 export const useLaboratorioLogic = (initialValues = {}) => {
   const [values, setValues] = useState<any>(initialValues);
 
-  const getStatus = (name: string, value: string) => {
-    // ✅ Si no hay valor, devolvemos 'gray' para el borde gris inicial
-    if (value === "" || value === null || value === undefined) return { color: "gray", label: "" };
+  /**
+   * 🚦 Lógica de colores e información (Semáforo Nutri-AS)
+   */
+  const getStatusInfo = (name: string, value: any) => {
+    if (value === "" || value === null || value === undefined) {
+      return { color: "gray", label: "" };
+    }
     
-    // Lógica para PH
+    const val = parseFloat(value);
+    if (isNaN(val)) return { color: "gray", label: "" };
+
+    // Caso Especial: PH Urinario
     if (name === "ph") {
-      const val = parseFloat(value);
       if (val >= 6.0 && val <= 7.5) return { color: "green", label: "Óptimo" };
       if ((val >= 5.5 && val < 6.0) || (val > 7.5 && val <= 8.0)) return { color: "yellow", label: "Alerta" };
-      return { color: "red", label: "Riesgo" };
+      return { color: "red", label: "Nivel Crítico" };
     }
 
-    const val = parseFloat(value);
     const config = RANGOS_LAB[name];
-    if (isNaN(val) || !config) return { color: "gray", label: "" };
+    if (!config) return { color: "gray", label: "" };
 
-    const { min, max } = config;
-    const bufferMin = min ? min * 0.98 : 0;
-    const bufferMax = max ? max * 1.02 : 9999;
+    // ✅ Fix TS 18048: Manejo seguro de min/max con valores por defecto
+    const min = config.min ?? 0;
+    const max = config.max ?? 999999;
+    const bufferMin = min * 0.98;
+    const bufferMax = max * 1.02;
 
-    if ((!min || val >= min) && (!max || val <= max)) return { color: "green", label: "Normal" };
-    if ((!min || val >= bufferMin) && (!max || val <= bufferMax)) return { color: "yellow", label: "Alerta" };
-    return { color: "red", label: "Riesgo" };
+    if (val >= min && val <= max) return { color: "green", label: "Normal" };
+    if (val >= bufferMin && val <= bufferMax) return { color: "yellow", label: "Alerta" };
+    return { color: "red", label: "Nivel Crítico" };
   };
 
-  const totalAlertas = useMemo(() => {
-    return Object.keys(values).reduce((acc, key) => {
-      const { color } = getStatus(key, values[key]);
-      return (color === "red" || color === "yellow") ? acc + 1 : acc;
-    }, 0);
-  }, [values]);
+  /**
+   * 🎨 Obtener clases de Tailwind para los inputs
+   */
+  const getStatusColor = (name: string, value: any) => {
+    const status = getStatusInfo(name, value);
+    switch (status.color) {
+      case "red": return "border-red-500 bg-red-50 text-red-700";
+      case "yellow": return "border-yellow-500 bg-yellow-50 text-yellow-700";
+      case "green": return "border-green-500 bg-green-50 text-green-700";
+      default: return "border-gray-100 bg-gray-50/50";
+    }
+  };
 
-  const indiceAterogenico = useMemo(() => {
-    const ct = parseFloat(values.colesterolTotal);
-    const hdl = parseFloat(values.hdl);
-    return ct && hdl ? parseFloat((ct / hdl).toFixed(2)) : 0;
+  /**
+   * 📈 Cálculos automáticos (como el Índice Aterogénico)
+   */
+  const calculos = useMemo(() => {
+    const ct = parseFloat(values.colesterolTotal) || 0;
+    const hdl = parseFloat(values.hdl) || 0;
+    const indice = hdl > 0 ? parseFloat((ct / hdl).toFixed(2)) : 0;
+    return { indice };
   }, [values.colesterolTotal, values.hdl]);
 
-  return { values, setValues, getStatus, totalAlertas, indiceAterogenico };
+  /**
+   * 🚨 Conteo de alertas totales
+   */
+  const totalAlertas = useMemo(() => {
+    return Object.entries(values).filter(([key, val]) => {
+      const status = getStatusInfo(key, val);
+      return status.color === 'red' || status.color === 'yellow';
+    }).length;
+  }, [values]);
+
+  /**
+   * 🔄 Estado de cambios
+   */
+  const hasChanges = Object.values(values).some(v => v !== "" && v !== null);
+
+  return { 
+    values, 
+    setValues, 
+    getStatusInfo, 
+    getStatusColor, 
+    calculos, 
+    totalAlertas, 
+    hasChanges,
+    indiceAterogenico: calculos.indice // Alias para compatibilidad
+  };
 };
