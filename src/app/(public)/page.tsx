@@ -49,7 +49,7 @@ export default function LandingPage() {
               className="text-5xl md:text-7xl font-extrabold text-gray-900 leading-tight transition-colors cursor-default"
             >
               Nutri-AS: <br />
-              Tu clínica virtual, <br />
+              Prueba directa a prod, <br />
               <span className="text-nutri-orange">tu éxito profesional.</span>
             </motion.h1>
 
