@@ -11,14 +11,15 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   // 🔐 Obtenemos sesión y datos en el servidor
+  const hoy: Date = new Date();
   const session = await auth();
-  const { hoy, proximas } = await getDashboardSessions();
+  const { proximas } = await getDashboardSessions();
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
       {/* Pasamos los datos directamente como props */}
       <WelcomeModal userName={session?.user?.name || "Nutriólogo"} />
-      <AdminBanner />
+      <AdminBanner initialUser={session?.user} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-7 space-y-12">
