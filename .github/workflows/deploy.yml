@@ -18,7 +18,7 @@ jobs:
           port: 22
           script: |
             cd /var/www/nutri-as
-            git pull origin pull
+            git pull 
             npm install
             npm run build
             pm2 restart nutri-as --update-env
