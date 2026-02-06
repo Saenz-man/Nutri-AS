@@ -9,6 +9,7 @@ export default async function CalculoPage({ params }: { params: Promise<{ id: st
   const paciente = await db.patient.findUnique({
     where: { id },
     include: {
+      nutritionist: true,
       appointments: {
         include: { medicion: true },
         orderBy: { fechaHora: "desc" },
