@@ -185,7 +185,6 @@ export default function RegistroPage() {
               )}
 
               <div className="pt-4">
-               // ✅ Una sola línea evita discrepancias entre servidor y cliente
 <button className="w-full flex items-center justify-center gap-3 text-xl py-5 group border-2">
   Registrarme ahora
 </button>
