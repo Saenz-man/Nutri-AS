@@ -98,6 +98,7 @@ export const actualizarPaciente = async (id: string, data: any) => {
       data: {
         nombre: data.nombre,
         apellido: data.apellido,
+        email: data.email || null,
         foto: data.foto,
         sexo: data.sexo, 
       },
