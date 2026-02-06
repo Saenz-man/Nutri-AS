@@ -12,9 +12,9 @@ jobs:
       - name: Desplegando en VPS vía SSH
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.REMOTE_HOST }}
-          username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY_NUTRIAS }}
           port: 22
           script: |
             cd /var/www/nutri-as
