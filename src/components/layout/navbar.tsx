@@ -99,7 +99,7 @@ export default function Navbar() {
              <Link href="/soporte" onClick={() => setIsMenuOpen(false)} className="block py-2 text-gray-600">Soporte Técnico</Link>
           </div>
           <div className="pt-4 flex flex-col gap-4">
-            <Link href="/login" className="w-full text-center py-3 text-gray-600 font-bold">Log in</Link>
+            <Link href="/login" className="w-full text-center py-3 text-gray-600 font-bold">Inicio de Sesion</Link>
             <Link href="/registro" className="w-full text-center py-4 bg-nutri-main text-white rounded-2xl font-bold">Registrarme</Link>
           </div>
         </div>
