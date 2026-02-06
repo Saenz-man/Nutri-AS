@@ -44,8 +44,12 @@ export default function SessionStack({ sessions, loading }: any) {
                   {cita.status}
                 </span>
 
-                {/* 💡 Componente con detención de propagación */}
-                <AppointmentActions appointmentId={cita.id} patientId={cita.patientId} />
+                {/* ✅ SOLUCIÓN AL ERROR DE TYPESCRIPT: Se agregó originalFechaHora */}
+                <AppointmentActions 
+                  appointmentId={cita.id} 
+                  patientId={cita.patientId} 
+                  originalFechaHora={cita.fechaHora} 
+                />
               </div>
             </div>
           ))}
