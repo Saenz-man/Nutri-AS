@@ -68,7 +68,7 @@ export default function Navbar() {
 
           {/* Buttons */}
           <div className="hidden md:flex items-center gap-4">
-            <Link href="/login" className="text-gray-600 hover:text-nutri-main font-bold">Log in</Link>
+            <Link href="/login" className="text-gray-600 hover:text-nutri-main font-bold">Inicio de sesión</Link>
             <Link href="/registro" className="bg-nutri-main hover:bg-nutri-dark text-white px-6 py-2.5 rounded-full font-bold transition-all shadow-lg shadow-nutri-main/20">
               Registrarme
             </Link>

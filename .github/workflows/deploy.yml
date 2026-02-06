@@ -1,0 +1,25 @@
+name: Deploy Nutri-AS Pro
+
+on:
+  push:
+    branches:
+      - main # 👈 Se activa solo al hacer push a esta rama
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Desplegando en VPS vía SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            cd /var/www/nutri-as
+            git checkout Mark-Produccion
+            git pull origin Mark-Produccion
+            npm install
+            npm run build
+            pm2 restart nutri-as --update-env
