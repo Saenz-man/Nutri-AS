@@ -41,11 +41,11 @@ export default function UpcomingSessions({ sessions, loading }: any) {
                 </div>
               </div>
 
-              {/* ✅ SOLUCIÓN: Pasamos el patientId que reclama el componente */}
-              <AppointmentActions 
-                appointmentId={cita.id} 
-                patientId={cita.patientId} 
-              />
+            <AppointmentActions 
+  appointmentId={cita.id} 
+  patientId={cita.patientId} 
+  originalFechaHora={cita.fechaHora} // 👈 Agrega esta línea
+/>
             </div>
           ))
         )}
