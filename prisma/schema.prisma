@@ -89,8 +89,7 @@ model Medicion {
   supraespinal      Float?
   abdominal         Float?
   muslo             Float?
-  pierna            Float?
-
+  piernaPaniculo    Float?    
   // 🔵 Bioimpedancia
   grasaEquipo       Float?
   agua              Float?

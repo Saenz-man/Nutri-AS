@@ -45,7 +45,7 @@ export default function AntropometriaIsak({ values, handleChange }: any) {
             { id: "supraespinal", label: "Supraespinal" },
             { id: "abdominal", label: "Abdominal" },
             { id: "muslo", label: "Muslo" },
-            { id: "pierna", label: "Pierna" }
+            { id: "piernaPaniculo", label: "Pierna Paniculo" }
           ].map((fold) => (
             <div key={fold.id}>
               <label className="text-[10px] font-black text-gray-400 uppercase ml-2">{fold.label}</label>

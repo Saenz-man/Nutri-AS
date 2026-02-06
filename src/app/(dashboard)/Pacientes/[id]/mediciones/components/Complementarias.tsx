@@ -38,7 +38,7 @@ export default function Complementarias({ formData, handleChange, resultados }: 
           <div className="grid grid-cols-1 gap-3">
             <input name="brazoR" placeholder="Brazo Relajado" value={formData.brazoR} onChange={handleChange} className="nutri-input" />
             <input name="brazoC" placeholder="Brazo Contraído" value={formData.brazoC} onChange={handleChange} className="nutri-input" />
-            <input name="pierna" placeholder="Pierna (Media)" value={formData.pierna} onChange={handleChange} className="nutri-input" />
+            <input name="piernaCirc" placeholder="Pierna (Media)" value={formData.piernaCirc} onChange={handleChange} className="nutri-input" />
           </div>
         </div>
 

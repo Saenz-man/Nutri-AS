@@ -5,102 +5,102 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 
 /**
- * 🔍 VERIFICAR EXISTENCIA POR DÍA
- * Evita duplicados si el nutriólogo intenta guardar dos veces el mismo día.
+ * 🛠️ 1. FUNCIÓN AUXILIAR: SANITIZACIÓN Y LIMPIEZA
+ * Esta función procesa el objeto 'data' crudo del formulario. 
+ * Convierte strings a números (float/int), maneja valores vacíos como null
+ * y aplica la corrección de llaves únicas para 'pierna'.
  */
-export const checkMedicionDia = async (pacienteId: string, fecha: string) => {
-  const session = await auth();
-  if (!session?.user?.id) return { error: "No autorizado" };
+const sanitizeMedicionData = (data: any) => {
+  const sanitized: any = {};
+  
+  // Listado oficial de campos numéricos del esquema Nutri-AS
+  const numericFields = [
+    'peso', 'talla', 'tallaSentado', 'envergadura', 
+    'triceps', 'subescapular', 'biceps', 'crestaIliaca', 
+    'supraespinal', 'abdominal', 'muslo', 
+    'piernaPaniculo', // ✅ Independiente: Panículo (mm)
+    'grasaEquipo', 'musculo', 'agua', 'grasaVisceral', 'masaOsea',
+    'imc', 'icc', 'cintura', 'cadera', 'brazoR', 'brazoC', 
+    'piernaCirc',    // ✅ Independiente: Circunferencia (cm)
+    'estiloideo', 'femur', 'humero'
+  ];
 
-  const inicioDia = new Date(fecha);
-  inicioDia.setHours(0, 0, 0, 0);
-
-  const finDia = new Date(fecha);
-  finDia.setHours(23, 59, 59, 999);
-
-  const existente = await db.medicion.findFirst({
-    where: {
-      appointment: {
-        patientId: pacienteId,
-        fechaHora: { gte: inicioDia, lte: finDia }
-      }
+  numericFields.forEach(field => {
+    const value = data[field];
+    if (value !== undefined && value !== "" && value !== null) {
+      const parsedValue = parseFloat(value);
+      sanitized[field] = isNaN(parsedValue) ? null : parsedValue;
+    } else {
+      sanitized[field] = null;
     }
   });
 
-  return { existe: !!existente };
+  // Manejo específico para enteros (Edad Metabólica)
+  if (data.edadMetabolica !== undefined && data.edadMetabolica !== "") {
+    sanitized.edadMetabolica = parseInt(data.edadMetabolica) || null;
+  }
+
+  return sanitized;
 };
 
 /**
- * 💾 GUARDAR MEDICIÓN COMPLETA (MODO CIENTÍFICO)
- * Procesa pliegues, bioimpedancia y realiza cálculos automáticos.
+ * 🔍 2. VERIFICAR EXISTENCIA POR DÍA
+ * Consulta si el paciente ya tiene una medición en la fecha actual.
+ * Devuelve 'datos' para que el frontend pueda auto-completar el formulario
+ * y activar el Modo Edición.
+ */
+export const checkMedicionDia = async (pacienteId: string, fecha: string) => {
+  try {
+    const inicioDia = new Date(fecha + "T00:00:00Z");
+    const finDia = new Date(fecha + "T23:59:59Z");
+
+    const medicion = await db.medicion.findFirst({
+      where: {
+        appointment: { patientId: pacienteId },
+        createdAt: { gte: inicioDia, lte: finDia }
+      }
+    });
+
+    // Retornamos 'datos' para resolver el error TS 2339
+    return { existe: !!medicion, datos: medicion || null };
+  } catch (error) {
+    console.error("❌ Error checkMedicionDia:", error);
+    return { existe: false, error: "Fallo al consultar registro previo." };
+  }
+};
+
+/**
+ * 💾 3. GUARDAR NUEVA MEDICIÓN
+ * Crea una cita ('Appointment') y vincula los datos de composición corporal.
+ * También actualiza la talla global en el perfil del paciente.
  */
 export const guardarMedicionAction = async (pacienteId: string, data: any, fecha: string) => {
   const session = await auth();
   if (!session?.user?.id) return { error: "No autorizado" };
 
-  const sanitizedData: any = {};
-  const numericFields = [
-    'peso', 'talla', 'tallaSentado', 'envergadura', 
-    'triceps', 'subescapular', 'biceps', 'crestaIliaca', 
-    'supraespinal', 'abdominal', 'muslo', 'pierna',
-    'grasaEquipo', 'musculo', 'agua', 'grasaVisceral', 'masaOsea',
-    'imc', 'icc', 'cintura', 'cadera', 'brazoR', 'brazoC', 
-    'piernaCirc', 'estiloideo', 'femur', 'humero'
-  ];
-
-  // 1. Sanitización de datos (Conversión a Float y manejo de NaN)
-  numericFields.forEach(field => {
-    const value = data[field];
-    if (value !== undefined && value !== "" && value !== null) {
-      const parsedValue = parseFloat(value);
-      sanitizedData[field] = isNaN(parsedValue) ? null : parsedValue;
-    } else {
-      sanitizedData[field] = null;
-    }
-  });
-
-  // 2. 🧬 LÓGICA DE CÁLCULO AUTOMÁTICO (SIRI)
-  // Si falta el valor del equipo, calculamos %GC por suma de 4 pliegues
-  if (!sanitizedData.grasaEquipo && sanitizedData.triceps && sanitizedData.subescapular && sanitizedData.biceps && sanitizedData.crestaIliaca) {
-    const suma4 = sanitizedData.triceps + sanitizedData.subescapular + sanitizedData.biceps + sanitizedData.crestaIliaca;
-    
-    // Densidad corporal (Fórmula de Durnin & Womersley)
-    const densidad = 1.1599 - (0.0717 * Math.log10(suma4)); 
-    
-    // Ecuación de Siri: ((4.95 / D) - 4.50) * 100
-    const grasaSiri = ((4.95 / densidad) - 4.50) * 100;
-    sanitizedData.grasaEquipo = parseFloat(grasaSiri.toFixed(2));
-  }
-
-  // 3. Edad Metabólica (Conversión a Int)
-  if (data.edadMetabolica && data.edadMetabolica !== "") {
-    const parsedEdad = parseInt(data.edadMetabolica);
-    sanitizedData.edadMetabolica = isNaN(parsedEdad) ? null : parsedEdad;
-  } else {
-    sanitizedData.edadMetabolica = null;
-  }
+  const sanitizedData = sanitizeMedicionData(data);
 
   try {
-    // 1. Crear cita técnica en Hostinger
+    // 1. Generamos la cita técnica para el historial
     const appointment = await db.appointment.create({
       data: {
-        patientId: pacienteId, // ✅ CORRECCIÓN TS 2552: Nombre consistente
+        patientId: pacienteId,
         nutritionistId: session.user.id,
         fechaHora: new Date(fecha),
         status: "ATENDIDA",
-        motivo: "Evaluación de Composición Corporal",
+        motivo: "Evaluación Antropométrica",
       }
     });
 
-    // 2. Crear registro de medición técnica
+    // 2. Creamos el registro de medición vinculado
     await db.medicion.create({
-      data: {
-        ...sanitizedData,
-        appointmentId: appointment.id
+      data: { 
+        ...sanitizedData, 
+        appointmentId: appointment.id 
       }
     });
 
-    // 3. Actualizar talla en el expediente del paciente
+    // 3. Sincronizamos la talla en el expediente principal
     if (sanitizedData.talla) {
       await db.patient.update({
         where: { id: pacienteId },
@@ -108,13 +108,49 @@ export const guardarMedicionAction = async (pacienteId: string, data: any, fecha
       });
     }
 
-    // 🔄 Revalidar para actualizar indicadores en el MacBook Pro
     revalidatePath(`/dashboard/pacientes/${pacienteId}`);
-    revalidatePath(`/dashboard/pacientes/${pacienteId}/historia`);
-    
     return { success: true };
   } catch (error) {
-    console.error("❌ Error en Hostinger:", error);
-    return { error: "Error al guardar los datos numéricos." };
+    console.error("❌ Error guardarMedicionAction:", error);
+    return { error: "No se pudo crear el registro en Hostinger." };
+  }
+};
+
+/**
+ * 🔄 4. ACTUALIZAR MEDICIÓN EXISTENTE
+ * Busca el registro del día y sobreescribe los valores.
+ * Resuelve el error TS 2724 al exportar la acción correctamente.
+ */
+export const actualizarMedicionAction = async (pacienteId: string, data: any, fecha: string) => {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No autorizado" };
+
+  const sanitizedData = sanitizeMedicionData(data);
+
+  try {
+    const inicioDia = new Date(fecha + "T00:00:00Z");
+    const finDia = new Date(fecha + "T23:59:59Z");
+
+    // Localizamos el registro de hoy
+    const registroPrevio = await db.medicion.findFirst({
+      where: {
+        appointment: { patientId: pacienteId },
+        createdAt: { gte: inicioDia, lte: finDia }
+      }
+    });
+
+    if (!registroPrevio) return { error: "No se encontró el registro para actualizar." };
+
+    // Actualizamos con los nuevos cálculos de Siri/Von Döbeln
+    await db.medicion.update({
+      where: { id: registroPrevio.id },
+      data: sanitizedData
+    });
+
+    revalidatePath(`/dashboard/pacientes/${pacienteId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("❌ Error actualizarMedicionAction:", error);
+    return { error: "Error al actualizar los datos biométricos." };
   }
 };
