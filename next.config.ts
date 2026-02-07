@@ -2,6 +2,14 @@
 const nextConfig = {
   async rewrites() {
     return [
+       {
+       source: '/dashboard/dietas',       // La URL bonita
+        destination: '/lista-dietas',
+      },
+        {
+    source: '/dashboard/material',     // La URL bonita
+        destination: '/material-apoyo',
+      },
         {
         // ⚙️ Configuración del usuario
         source: '/dashboard/configuracion',
