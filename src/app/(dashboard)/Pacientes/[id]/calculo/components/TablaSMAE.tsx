@@ -1,7 +1,7 @@
 // src/app/(dashboard)/Pacientes/[id]/calculo/components/TablaSMAE.tsx
 "use client";
 
-import { GRUPOS_SMAE } from "../constants/smae";
+import { GRUPOS_SMAE } from "../../../../../../constants/smae";
 
 export default function TablaSMAE({ equivalentes, setEquivalentes }: any) {
   

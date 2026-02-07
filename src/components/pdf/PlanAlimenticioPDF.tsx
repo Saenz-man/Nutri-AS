@@ -1,7 +1,7 @@
 // src/components/pdf/PlanAlimenticioPDF.tsx
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
-import { GRUPOS_SMAE } from '@/app/(dashboard)/Pacientes/[id]/calculo/constants/smae';
+import { GRUPOS_SMAE } from '@/constants/smae';
 
 const styles = StyleSheet.create({
   page: { backgroundColor: '#ffffff', padding: 40, fontFamily: 'Helvetica' },

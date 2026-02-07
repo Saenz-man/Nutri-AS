@@ -7,7 +7,7 @@ import { PDFDownloadLink } from '@react-pdf/renderer';
 // 🪝 Hooks y Lógica
 import { useDietLogic } from "../hooks/useDietLogic";
 import { guardarPlanCompleto } from "../actions/saveDietAction"; 
-import { GRUPOS_SMAE } from "../constants/smae";
+import { GRUPOS_SMAE } from "../../../../../../constants/smae";
 import { Play, RefreshCw, FileDown } from "lucide-react";
 
 // 🧩 Componentes Atómicos

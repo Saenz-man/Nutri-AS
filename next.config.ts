@@ -8,6 +8,11 @@ const nextConfig = {
         destination: '/configuracion',
       },
       {
+        // ⚙️ Configuración del usuario
+        source: '/dashboard/calculadora',
+        destination: '/calculadora',
+      },
+      {
         // 🌍 CAPTURA TODO: dashboard/pacientes/ID/historia -> Pacientes/ID/historia
         source: '/dashboard/pacientes/:id/:path*', 
         destination: '/Pacientes/:id/:path*',
