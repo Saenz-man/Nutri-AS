@@ -1,14 +1,22 @@
-// src/app/(dashboard)/dashboard/components/session-stack.tsx
 "use client";
 
 import { Clock, CalendarX } from "lucide-react";
 import { useRouter } from "next/navigation";
 import AppointmentActions from "./appointment-actions";
 
-export default function SessionStack({ sessions, loading }: any) {
+export default function SessionStack({ sessions = [], loading }: any) {
   const router = useRouter();
 
   if (loading) return <div className="animate-pulse h-40 bg-white rounded-4xl" />;
+
+  // Validación de seguridad para evitar el error .map is not a function
+  if (!Array.isArray(sessions)) {
+    return (
+      <div className="p-8 bg-white rounded-4xl border border-red-100 text-center text-red-500">
+        Error al cargar las sesiones del día.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -23,7 +31,6 @@ export default function SessionStack({ sessions, loading }: any) {
           {sessions.map((cita: any) => (
             <div 
               key={cita.id} 
-              // 💡 Eliminado overflow-hidden para que el menú se vea
               className="flex items-center justify-between p-5 bg-white rounded-3xl border border-gray-50 hover:border-nutri-main/20 hover:shadow-lg transition-all group relative"
             >
               <div 
@@ -44,7 +51,6 @@ export default function SessionStack({ sessions, loading }: any) {
                   {cita.status}
                 </span>
 
-                {/* ✅ SOLUCIÓN AL ERROR DE TYPESCRIPT: Se agregó originalFechaHora */}
                 <AppointmentActions 
                   appointmentId={cita.id} 
                   patientId={cita.patientId} 

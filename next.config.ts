@@ -2,6 +2,11 @@
 const nextConfig = {
   async rewrites() {
     return [
+        {
+        // ⚙️ Configuración del usuario
+        source: '/dashboard/configuracion',
+        destination: '/configuracion',
+      },
       {
         // 🌍 CAPTURA TODO: dashboard/pacientes/ID/historia -> Pacientes/ID/historia
         source: '/dashboard/pacientes/:id/:path*', 

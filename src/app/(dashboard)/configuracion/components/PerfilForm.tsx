@@ -1,0 +1,139 @@
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { UpdateUserSchema, type UpdateUserInput } from "@/schemas/user.schema";
+import { updateUserService } from "@/lib/actions/user";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+
+interface PerfilFormProps {
+  user: {
+    id: string;
+    nombre: string;
+    apellido: string;
+    telefono: string;
+    carrera: string;
+    cumpleaños: Date | string;
+    fotoPerfil?: string | null;
+  };
+}
+
+export default function PerfilForm({ user }: PerfilFormProps) {
+  const router = useRouter();
+  
+  const { 
+    register, 
+    handleSubmit, 
+    formState: { errors, isSubmitting } 
+  } = useForm<UpdateUserInput>({
+    resolver: zodResolver(UpdateUserSchema),
+    defaultValues: {
+      nombre: user.nombre || "",
+      apellido: user.apellido || "",
+      telefono: user.telefono || "",
+      carrera: user.carrera || "",
+    }
+  });
+
+  const onSubmit = async (data: UpdateUserInput) => {
+    try {
+      const result = await updateUserService(user.id, data);
+      
+      if (result.success) {
+        toast.success("Perfil actualizado con éxito");
+        router.refresh();
+      } else {
+        toast.error(result.error || "Ocurrió un error al actualizar");
+      }
+    } catch (error) {
+      toast.error("Error de conexión con el servidor");
+    }
+  };
+
+  // ✅ Formatear fecha para mostrar
+  const formatearFecha = (fecha: Date | string) => {
+    try {
+      const date = new Date(fecha);
+      return date.toLocaleDateString('es-MX', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    } catch {
+      return "Fecha no disponible";
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        {/* Nombre */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-bold text-gray-700 ml-1">Nombre(s)</label>
+          <input 
+            {...register("nombre")}
+            placeholder="Tu nombre"
+            className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-nutri-main focus:ring-4 focus:ring-nutri-main/5 outline-none transition-all"
+          />
+          {errors.nombre && <p className="text-xs text-red-500 font-medium ml-1">{errors.nombre.message}</p>}
+        </div>
+
+        {/* Apellido */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-bold text-gray-700 ml-1">Apellidos</label>
+          <input 
+            {...register("apellido")}
+            placeholder="Tus apellidos"
+            className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-nutri-main focus:ring-4 focus:ring-nutri-main/5 outline-none transition-all"
+          />
+          {errors.apellido && <p className="text-xs text-red-500 font-medium ml-1">{errors.apellido.message}</p>}
+        </div>
+
+        {/* Carrera / Especialidad */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-bold text-gray-700 ml-1">Carrera o Especialidad</label>
+          <input 
+            {...register("carrera")}
+            placeholder="Ej. Nutrición Clínica"
+            className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-nutri-main focus:ring-4 focus:ring-nutri-main/5 outline-none transition-all"
+          />
+          {errors.carrera && <p className="text-xs text-red-500 font-medium ml-1">{errors.carrera.message}</p>}
+        </div>
+
+        {/* Teléfono */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-bold text-gray-700 ml-1">Teléfono de Contacto</label>
+          <input 
+            {...register("telefono")}
+            placeholder="10 dígitos"
+            className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-nutri-main focus:ring-4 focus:ring-nutri-main/5 outline-none transition-all"
+          />
+          {errors.telefono && <p className="text-xs text-red-500 font-medium ml-1">{errors.telefono.message}</p>}
+        </div>
+
+        {/* Fecha de Nacimiento - Solo Lectura */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-bold text-gray-700 ml-1">Fecha de Nacimiento</label>
+          <div className="p-4 rounded-2xl border border-gray-100 bg-gray-50 text-gray-600">
+            {user.cumpleaños ? formatearFecha(user.cumpleaños) : "No especificada"}
+          </div>
+          <p className="text-xs text-gray-500 ml-1">
+            Este campo no se puede modificar. Contacta a soporte si necesitas cambiarlo.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-4">
+        <button 
+          type="submit" 
+          disabled={isSubmitting}
+          className="bg-nutri-main text-white px-10 py-4 rounded-2xl font-bold hover:bg-nutri-teal active:scale-95 transition-all shadow-md shadow-nutri-main/20 disabled:opacity-50"
+        >
+          {isSubmitting ? "Actualizando..." : "Guardar Cambios"}
+        </button>
+      </div>
+    </form>
+  );
+}

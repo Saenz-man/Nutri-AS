@@ -3,8 +3,13 @@
 import { CalendarDays, Clock } from "lucide-react";
 import AppointmentActions from "./appointment-actions"; 
 
-export default function UpcomingSessions({ sessions, loading }: any) {
+export default function UpcomingSessions({ sessions = [], loading }: any) {
   if (loading) return <div className="animate-pulse h-40 bg-gray-50 rounded-4xl" />;
+
+  // Validación de seguridad
+  if (!Array.isArray(sessions)) {
+    return <div className="p-10 text-center text-gray-400">Error en el formato de datos.</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -37,15 +42,15 @@ export default function UpcomingSessions({ sessions, loading }: any) {
                   </p>
                   <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">
                     {cita.status}
-                  </span >
+                  </span>
                 </div>
               </div>
 
-            <AppointmentActions 
-  appointmentId={cita.id} 
-  patientId={cita.patientId} 
-  originalFechaHora={cita.fechaHora} // 👈 Agrega esta línea
-/>
+              <AppointmentActions 
+                appointmentId={cita.id} 
+                patientId={cita.patientId} 
+                originalFechaHora={cita.fechaHora} 
+              />
             </div>
           ))
         )}

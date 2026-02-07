@@ -6,26 +6,26 @@ import SessionStack from "./components/session-stack";
 import CalendarView from "./components/calendar-view";
 import UpcomingSessions from "./components/upcoming-sessions";
 
-// ✅ Forzamos que la página no se guarde en caché estática
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  // 🔐 Obtenemos sesión y datos en el servidor
-  const hoy: Date = new Date();
   const session = await auth();
-  const { proximas } = await getDashboardSessions();
+  
+  // Obtenemos las sesiones desestructuradas. 
+  // Asegúrate que tu action devuelva { proximas, delDia }
+  const { proximas, hoy } = await getDashboardSessions();
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
-      {/* Pasamos los datos directamente como props */}
       <WelcomeModal userName={session?.user?.name || "Nutriólogo"} />
       <AdminBanner initialUser={session?.user} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-7 space-y-12">
-          {/* ✅ Al ser Server Component, router.refresh() actualizará estas listas automáticamente */}
-          <SessionStack sessions={hoy} loading={false} />
-          <UpcomingSessions sessions={proximas} loading={false} />
+          {/* ✅ CORRECCIÓN: Pasamos 'delDia' (Array) y no 'hoy' (Date) */}
+          <SessionStack sessions={hoy || []} loading={false} />
+          
+          <UpcomingSessions sessions={proximas || []} loading={false} />
         </div>
 
         <div className="lg:col-span-5">
