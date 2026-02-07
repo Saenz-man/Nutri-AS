@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth"; 
-import { db } from "@/lib/db"; // Usamos tu singleton db para consistencia
+import { db } from "@/lib/db"; 
 import { revalidatePath } from "next/cache";
 import { UpdateUserSchema } from "@/schemas/user.schema";
 
@@ -23,16 +23,31 @@ export async function updateUserService(userId: string, data: any) {
       };
     }
 
+    // ✅ CORRECCIÓN: Extraemos directamente las variables del schema validado
+    // Ya no intentamos leer 'cumpleaños' porque Zod ya lo transformó o validó como 'fechaNacimiento'
+    const { 
+      nombre, 
+      apellido, 
+      telefono, 
+      carrera, 
+      fechaNacimiento, 
+      fotoPerfil, 
+      fotoBanner 
+    } = validatedData.data;
+
     const updatedUser = await db.user.update({
       where: { id: userId },
       data: {
-        nombre: validatedData.data.nombre,
-        apellido: validatedData.data.apellido,
-        telefono: validatedData.data.telefono,
-        carrera: validatedData.data.carrera,
-        cumpleaños: validatedData.data.cumpleaños,
-        fotoPerfil: validatedData.data.fotoPerfil,
-        fotoBanner: validatedData.data.fotoBanner,
+        nombre,
+        apellido,
+        telefono,
+        carrera,
+        
+        // ✅ Aseguramos que sea un objeto Date válido si existe el dato
+        fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : undefined,
+
+        fotoPerfil,
+        fotoBanner,
       },
     });
 

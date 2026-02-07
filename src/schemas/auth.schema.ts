@@ -8,7 +8,6 @@ export const RegisterSchema = z.object({
   telefono: z.string().min(10, "Ingresa un teléfono válido"),
   carrera: z.string().min(5, "Especifica tu carrera"),
   
-  // ✅ CAMBIO REALIZADO: De 'cumpleaños' a 'fechaNacimiento'
   fechaNacimiento: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: "Fecha de nacimiento inválida",
   }),

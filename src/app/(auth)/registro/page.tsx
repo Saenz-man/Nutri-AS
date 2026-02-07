@@ -192,7 +192,6 @@ export default function RegistroPage() {
               
               <div className="space-y-2">
                 <label className="text-sm font-bold text-gray-700 ml-1">Fecha de Nacimiento</label>
-                {/* ✅ CORREGIDO: "cumpleaños" -> "fechaNacimiento" */}
                 <input {...register("fechaNacimiento")} type="date" className="nutri-input" />
                 {/* Agregué el manejo de error para la fecha por si acaso */}
                 {errors.fechaNacimiento && <p className="text-red-500 text-xs ml-1 font-bold">{errors.fechaNacimiento.message}</p>}

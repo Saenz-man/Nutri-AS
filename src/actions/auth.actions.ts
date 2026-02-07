@@ -22,7 +22,7 @@ export const registerUser = async (values: any) => {
     apellido, 
     telefono, 
     carrera, 
-    fechaNacimiento // ✅ Ya no usamos 'cumpleaños' aquí
+    fechaNacimiento 
   } = validatedFields.data;
 
   try {
