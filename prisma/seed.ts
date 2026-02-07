@@ -21,7 +21,7 @@ async function main() {
       password: 'password123',
       telefono: '1234567890',
       carrera: 'Nutrición Clínica',
-      cumpleaños: new Date('1995-01-01'),
+      fechaNacimiento: new Date('1995-01-01'), // ✅ Cambiado de cumpleaños a fechaNacimiento
       status: 'TEST_USER',
     },
   });

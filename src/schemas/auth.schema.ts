@@ -7,8 +7,9 @@ export const RegisterSchema = z.object({
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
   telefono: z.string().min(10, "Ingresa un teléfono válido"),
   carrera: z.string().min(5, "Especifica tu carrera"),
-  // Validamos que el string de fecha sea convertible a un objeto Date real
-  cumpleaños: z.string().refine((date) => !isNaN(Date.parse(date)), {
+  
+  // ✅ CAMBIO REALIZADO: De 'cumpleaños' a 'fechaNacimiento'
+  fechaNacimiento: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: "Fecha de nacimiento inválida",
   }),
 });

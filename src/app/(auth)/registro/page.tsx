@@ -42,6 +42,7 @@ export default function RegistroPage() {
 
   const onSubmit = async (values: RegisterInput) => {
     setError("");
+    // Aquí podrías necesitar lógica extra si vas a subir la imagen (preview) al servidor
     const result = await registerUser(values);
 
     if (result.error) {
@@ -70,9 +71,12 @@ export default function RegistroPage() {
             <p className="text-gray-600 mb-10 text-lg leading-relaxed">
               Tu cuenta en **Nutri-AS** ha sido creada con éxito. Ya puedes comenzar a gestionar tu clínica de forma inteligente.
             </p>
-            <button onClick={() => router.push("/dashboard")} className="btn-primary w-full text-xl py-5">
-              Aceptar e ir al Panel
-            </button>
+            <button 
+  onClick={() => router.push("/dashboard")} 
+  className="w-full bg-nutri-main text-white hover:bg-nutri-main/90 border-nutri-main border-2 flex items-center justify-center gap-3 text-xl py-5 rounded-2xl transition-all font-bold shadow-md hover:shadow-lg hover:scale-[1.01]"
+>
+  Aceptar e ir al Panel
+</button>
           </div>
         </main>
         <Footer />
@@ -135,7 +139,7 @@ export default function RegistroPage() {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               
-              {/* Foto de Perfil con Icono de Cámara Naranja */}
+              {/* Foto de Perfil */}
               <div className="flex flex-col items-center md:items-start justify-center mb-6">
                 <div className="relative group">
                   <div className="w-28 h-28 rounded-full overflow-hidden bg-white border-4 border-white shadow-sm flex items-center justify-center">
@@ -165,17 +169,33 @@ export default function RegistroPage() {
                 </div>
               </div>
               
-              <input {...register("email")} type="email" placeholder="Correo institucional" className="nutri-input" />
-              <input {...register("password")} type="password" placeholder="Contraseña" className="nutri-input" />
+              <div className="space-y-1">
+                <input {...register("email")} type="email" placeholder="Correo institucional" className="nutri-input" />
+                {errors.email && <p className="text-red-500 text-xs ml-1 font-bold">{errors.email.message}</p>}
+              </div>
+
+              <div className="space-y-1">
+                <input {...register("password")} type="password" placeholder="Contraseña" className="nutri-input" />
+                {errors.password && <p className="text-red-500 text-xs ml-1 font-bold">{errors.password.message}</p>}
+              </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <input {...register("telefono")} placeholder="Teléfono" className="nutri-input" />
-                <input {...register("carrera")} placeholder="Especialidad médica" className="nutri-input" />
+                <div className="space-y-1">
+                    <input {...register("telefono")} placeholder="Teléfono" className="nutri-input" />
+                    {errors.telefono && <p className="text-red-500 text-xs ml-1 font-bold">{errors.telefono.message}</p>}
+                </div>
+                <div className="space-y-1">
+                    <input {...register("carrera")} placeholder="Especialidad médica" className="nutri-input" />
+                    {errors.carrera && <p className="text-red-500 text-xs ml-1 font-bold">{errors.carrera.message}</p>}
+                </div>
               </div>
               
               <div className="space-y-2">
                 <label className="text-sm font-bold text-gray-700 ml-1">Fecha de Nacimiento</label>
-                <input {...register("cumpleaños")} type="date" className="nutri-input" />
+                {/* ✅ CORREGIDO: "cumpleaños" -> "fechaNacimiento" */}
+                <input {...register("fechaNacimiento")} type="date" className="nutri-input" />
+                {/* Agregué el manejo de error para la fecha por si acaso */}
+                {errors.fechaNacimiento && <p className="text-red-500 text-xs ml-1 font-bold">{errors.fechaNacimiento.message}</p>}
               </div>
 
               {error && (
@@ -185,10 +205,14 @@ export default function RegistroPage() {
               )}
 
               <div className="pt-4">
-<button className="w-full flex items-center justify-center gap-3 text-xl py-5 group border-2">
-  Registrarme ahora
-</button>
-              </div>
+  {/* ✅ Botón verde (bg-green-600) y texto blanco (text-white) */}
+  <button 
+    type="submit" 
+    className="w-full bg-nutri-main text-white hover:bg-green-700 border-green-600 flex items-center justify-center gap-3 text-xl py-5 group border-2 rounded-2xl transition-all font-bold shadow-md hover:shadow-lg"
+  >
+    Registrarme ahora
+  </button>
+</div>
             </form>
 
              <p className="text-center md:text-left text-gray-500 text-sm mt-8 font-medium">
