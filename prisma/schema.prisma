@@ -1,3 +1,5 @@
+// prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,46 +9,62 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 👤 PERFIL DEL NUTRIÓLOGO (Edgar Uriel)
+// 👤 PERFIL DEL NUTRIÓLOGO
 model User {
-  id           String        @id @default(uuid())
-  nombre       String
-  apellido     String
-  email        String        @unique
-  password     String
-  telefono     String
-  carrera      String
-  fechaNacimiento   DateTime
-  fotoPerfil   String?
-  fotoBanner   String?
-  status       UserStatus    @default(PENDING_PAYMENT)
-  maxPatients  Int           @default(10)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  appointments Appointment[]
-  patients     Patient[]
+  id              String         @id @default(uuid())
+  nombre          String
+  apellido        String
+  email           String         @unique
+  password        String
+  telefono        String
+  carrera         String
+  fechaNacimiento DateTime
+  fotoPerfil      String?
+  fotoBanner      String?
+  status          UserStatus     @default(PENDING_PAYMENT)
+  maxPatients     Int            @default(10)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  appointments    Appointment[]
+  patients        Patient[]
 }
 
 // 👥 EXPEDIENTE DEL PACIENTE
 model Patient {
-  id              String          @id @default(uuid())
-  expediente      String          @unique
-  nombre          String
-  apellido        String
-  email           String?
-  telefono        String?
-  fechaNacimiento DateTime?
-  sexo            String?
-  foto            String?
-  nutritionistId  String
-  status          PatientStatus   @default(ACTIVO)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  talla           Float?          // ✅ Necesario para el cálculo del IMC
+  id                     String         @id @default(uuid())
   
-  appointments    Appointment[]
-  consultations   Consultation[]
-  nutritionist    User            @relation(fields: [nutritionistId], references: [id])
+  // ✅ CORRECCIÓN: Se quita @unique para permitir duplicados entre diferentes nutriólogos
+  expediente             String         
+  
+  nombre                 String
+  apellido               String
+  email                  String?
+  telefono               String?
+  fechaNacimiento        DateTime?
+  sexo                   String?
+  foto                   String?
+  nutritionistId         String
+  status                 PatientStatus  @default(ACTIVO)
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  talla                  Float?         @default(0)
+
+  // 🏥 CAMPOS CLÍNICOS (Sincronizados con tus steps de alta)
+  motivoConsulta         String?        @db.Text
+  antecedentesFamiliares String[]       // Checkboxes: Diabetes, HTA, etc.
+  patologicosPersonales  String[]
+  cirugias               Boolean        @default(false)
+  cirugiasDetalle        String?        @db.Text
+  exploracion            Json?          // Hallazgos de piel, cabello, uñas, etc.
+  diagnosticoNutricional String?        @db.Text
+  
+  appointments           Appointment[]
+  consultations          Consultation[]
+  nutritionist           User           @relation(fields: [nutritionistId], references: [id])
+
+  // ✅ SOLUCIÓN AL ERROR P2002: El expediente es único SOLO dentro del catálogo de un mismo nutriólogo
+  @@unique([expediente, nutritionistId])
 }
 
 // 📅 CITA: El eje central del Historial Clínico
@@ -59,11 +77,11 @@ model Appointment {
   nutritionistId  String
   createdAt       DateTime         @default(now())
 
-  // 🔗 RELACIONES CLÍNICAS (1:1)
-  medicion        Medicion?        // Datos antropométricos
-  r24             R24?             // Recordatorio de 24 horas
-  laboratorios    Laboratorio?     // ✅ Corregido: Sin duplicidad ni listas
-  plan            PlanAlimenticio? // Dieta asignada
+  // 🔗 RELACIONES CLÍNICAS (1:1 con borrado en cascada)
+  medicion        Medicion?        
+  r24             R24?             
+  laboratorios    Laboratorio?     
+  plan            PlanAlimenticio? 
 
   nutritionist    User             @relation(fields: [nutritionistId], references: [id])
   patient         Patient          @relation(fields: [patientId], references: [id])
@@ -90,13 +108,14 @@ model Medicion {
   abdominal         Float?
   muslo             Float?
   piernaPaniculo    Float?    
+
   // 🔵 Bioimpedancia
   grasaEquipo       Float?
   agua              Float?
   grasaVisceral     Float?
   edadMetabolica    Int?
   masaOsea          Float?
-  musculo         Float?   // ✅ AÑADIR ESTE: Para el % de Músculo
+  musculo           Float?   // ✅ % de Músculo incluido
 
   // 🔘 Índices y Circunferencias
   imc               Float?
@@ -160,22 +179,22 @@ model Laboratorio {
   createdAt         DateTime    @default(now())
 }
 
-// 🍎 BLOQUE: R24
+// 🍎 BLOQUE: RECORDATORIO 24H
 model R24 {
   id              String      @id @default(uuid())
-  consumoKcal     Float
-  notas           String?
+  consumoKcal      Float
+  notas           String?     @db.Text
   appointmentId   String      @unique
-  appointment     Appointment @relation(fields: [appointmentId], references: [id])
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 }
 
 // 🥗 BLOQUE: PLANES ALIMENTICIOS
 model PlanAlimenticio {
   id              String      @id @default(uuid())
   nombre          String
-  detalles        String?
+  detalles        String?     @db.Text // JSON stringificado de metas y SMAE
   appointmentId   String      @unique
-  appointment     Appointment @relation(fields: [appointmentId], references: [id])
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 }
 
 // 📝 CONSULTA: Registro rápido histórico
@@ -185,12 +204,12 @@ model Consultation {
   peso        Float
   talla       Float
   imc         Float
-  subjetivo   String?
-  objetivo    String?
-  planAccion  String?
+  subjetivo   String?  @db.Text
+  objetivo    String?  @db.Text
+  planAccion  String?  @db.Text
   patientId   String
   createdAt   DateTime @default(now())
-  patient     Patient  @relation(fields: [patientId], references: [id])
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
 }
 
 enum UserStatus {

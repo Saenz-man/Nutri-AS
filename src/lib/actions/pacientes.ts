@@ -45,21 +45,20 @@ export const getPacientes = async () => {
 /**
  * 📝 REGISTRAR PACIENTE (ALTA)
  */
+// src/lib/actions/pacientes.ts
+
 export const registrarPaciente = async (data: any) => {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return { error: "No autorizado" };
 
   try {
-    // Validación de límites
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { maxPatients: true, _count: { select: { patients: true } } }
+    // Validación de duplicados específica para este nutriólogo
+    const existe = await db.patient.findFirst({
+      where: { expediente: data.expediente, nutritionistId: userId }
     });
 
-    if (user && user._count.patients >= user.maxPatients) {
-      return { error: "LIMIT_REACHED", max: user.maxPatients };
-    }
+    if (existe) return { error: "DUPLICATE_PATIENT" };
 
     const newPatient = await db.patient.create({
       data: {
@@ -67,17 +66,32 @@ export const registrarPaciente = async (data: any) => {
         apellido: data.apellido,
         expediente: data.expediente,
         telefono: data.telefono,
-        email: data.email,
-        sexo: data.sexo, // ✅ Sincronizado
+        email: data.email || null,
+        sexo: data.sexo,
         fechaNacimiento: data.fechaNacimiento ? new Date(data.fechaNacimiento) : null,
         nutritionistId: userId,
+        
+        // ✅ MAPEO DE CAMPOS CLÍNICOS
+        motivoConsulta: data.motivoConsulta,
+        antecedentesFamiliares: data.antecedentesFamiliares || [],
+        
+        // ✅ AHORA SÍ PUEDES INCLUIR ESTE CAMPO:
+        patologicosPersonales: data.patologicosPersonales || [],
+        
+        cirugias: data.cirugias === "true",
+        cirugiasDetalle: data.cirugiasDetalle,
+        exploracion: data.exploracion, 
+        diagnosticoNutricional: data.diagnosticoNutricional,
       },
     });
 
     revalidatePath("/dashboard/pacientes");
     return { success: true, id: newPatient.id };
-  } catch (error) {
-    return { error: "Error al guardar en la base de datos." };
+  } catch (error: any) {
+    if (error.code === 'P2002') return { error: "DUPLICATE_PATIENT" };
+    
+    console.error("❌ Error de Prisma:", error);
+    return { error: "Error técnico al guardar." };
   }
 };
 
