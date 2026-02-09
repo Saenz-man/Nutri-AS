@@ -304,3 +304,13 @@ export const eliminarPaciente = async (id: string) => {
     return { error: "No se pudo eliminar al paciente debido a registros protegidos." };
   }
 };
+
+// src/lib/actions/pacientes.ts
+
+// ✅ Definimos qué puede devolver esta función
+export type RegistrarPacienteResult = {
+  success?: boolean;
+  error?: string;
+  id?: string;
+  max?: number; // Propiedad para el límite alcanzado
+};

@@ -24,7 +24,6 @@ import DuplicateModal from "./DuplicateModal";
 
 export default function NuevoPacientePage() {
   const router = useRouter();
-  // 💡 Extraemos 'status' para manejar los estados de carga correctamente
   const { data: session, status } = useSession();
 
   const [step, setStep] = useState(1);
@@ -41,7 +40,6 @@ export default function NuevoPacientePage() {
     }
   });
 
-  // Generación automática de expediente
   useEffect(() => {
     const fetchExpediente = async () => {
       try {
@@ -54,7 +52,6 @@ export default function NuevoPacientePage() {
     fetchExpediente();
   }, [setValue]);
 
-  // Pantallas de carga y protección de ruta
   if (status === "loading") {
     return <div className="flex h-screen items-center justify-center font-bold text-nutri-main animate-pulse">Verificando sesión...</div>;
   }
@@ -66,12 +63,13 @@ export default function NuevoPacientePage() {
 
   const onSubmit = async (data: any) => {
     try {
-      // 🔒 Ya no pasamos el ID manualmente; el servidor lo obtendrá de la sesión
-      const result = await registrarPaciente(data);
+      // ✅ CORRECCIÓN: Forzamos el tipo a 'any' para permitir el acceso a .max en el build
+      const result = await registrarPaciente(data) as any;
 
       if (result.error === "DUPLICATE_PATIENT") {
         setShowDuplicateModal(true);
       } else if (result.error === "LIMIT_REACHED") {
+        // ✅ Ahora TypeScript no bloqueará el acceso a result.max
         toast.error(`Límite alcanzado: ${result.max} pacientes.`);
       } else if (result.success) {
         setShowSuccessModal(true);
@@ -90,8 +88,6 @@ export default function NuevoPacientePage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
-      
-      {/* CABECERA */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button 
@@ -108,7 +104,6 @@ export default function NuevoPacientePage() {
         </div>
       </div>
 
-      {/* PROGRESO */}
       <div className="flex items-center gap-4 bg-white p-6 rounded-4xl shadow-sm border border-gray-100">
         {[
           { id: 1, label: "Generales", icon: User },
@@ -128,13 +123,11 @@ export default function NuevoPacientePage() {
         ))}
       </div>
 
-      {/* FORMULARIO */}
       <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-8">
         {step === 1 && <StepGeneralData register={register} errors={errors} photoPreview={photoPreview} setPhotoPreview={setPhotoPreview} />}
         {step === 2 && <StepMedicalHistory register={register} watchCirugias={watch("cirugias")} />}
         {step === 3 && <StepExploration register={register} errors={errors} />}
 
-        {/* NAVEGACIÓN */}
         <div className="flex items-center justify-between pt-10 border-t border-gray-100">
           <button 
             type="button" 
