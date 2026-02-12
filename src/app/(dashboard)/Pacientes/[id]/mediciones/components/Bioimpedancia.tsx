@@ -44,7 +44,7 @@ export default function Bioimpedancia({ formData, handleChange, onCalcular }: an
 
         {/* 💪 RESULTADO: % MÚSCULO (TEJIDO MAGRO) */}
         <div className={`p-6 rounded-[32px] transition-all border-2 ${tieneMusculo ? 'bg-nutri-light border-nutri-main/20' : 'bg-gray-50 border-transparent'}`}>
-          <label className="text-[10px] font-black text-nutri-main uppercase tracking-widest mb-2 block italic"> % Tejido Magro</label>
+          <label className="text-[10px] font-black text-nutri-main uppercase tracking-widest mb-2 block italic"> % Masa muscular estimado</label>
           <div className="flex items-baseline gap-1">
             <input 
               name="musculo" 

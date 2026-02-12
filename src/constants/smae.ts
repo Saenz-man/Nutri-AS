@@ -5,7 +5,7 @@ export type SmaeInfo = { label: string; kcal: number; pro: number; lip: number; 
 export const GRUPOS_SMAE: Record<string, SmaeInfo> = {
   verduras: { label: "Verdura", kcal: 25, pro: 2, lip: 0, hco: 4 },
   frutas: { label: "Fruta", kcal: 60, pro: 0, lip: 0, hco: 15 },
-  cerealesSG: { label: "Cereales y tubérculos", kcal: 70, pro: 2, lip: 0, hco: 15 },
+  cerealesSG: { label: "Cereales sin grasa", kcal: 70, pro: 2, lip: 0, hco: 15 },
   cerealesCG: { label: "Cereales con grasa", kcal: 115, pro: 2, lip: 5, hco: 15 },
   leguminosas: { label: "Leguminosas", kcal: 120, pro: 8, lip: 1, hco: 20 },
   aoaMBAG: { label: "O.A muy bajo en grasa", kcal: 40, pro: 7, lip: 1, hco: 0 },

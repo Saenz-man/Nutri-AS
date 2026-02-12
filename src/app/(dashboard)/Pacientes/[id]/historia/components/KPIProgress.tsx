@@ -20,7 +20,7 @@ if (!ultimaMedicionReal) return null;
     { label: "Evolución de Peso", val: `${ultimaMed?.peso || "--"} kg`, sub: "Actualizado hoy", icon: Weight, color: "text-green-500", bg: "bg-green-50" },
     { label: "Índice de Masa Corporal", val: imc, sub: tallaPaciente > 0 ? `Talla: ${tallaPaciente}cm` : "Talla no registrada", icon: Activity, color: "text-blue-500", bg: "bg-blue-50" },
     { label: "% Grasa", val: `${ultimaMed?.grasaCorporal || "--"} %`, sub: "Composición corporal", icon: Percent, color: "text-orange-500", bg: "bg-orange-50" },
-    { label: "% Músculo", val: `${ultimaMed?.musculoKg || "--"} %`, sub: "Tejido Magro", icon: Zap, color: "text-purple-500", bg: "bg-purple-50" },
+    { label: "% Músculo", val: `${ultimaMed?.musculoKg || "--"} %`, sub: "Masa muscular estimado", icon: Zap, color: "text-purple-500", bg: "bg-purple-50" },
   ];
 
   return (
