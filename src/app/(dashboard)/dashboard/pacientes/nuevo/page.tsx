@@ -26,6 +26,14 @@ export default function NuevoPacientePage() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
+  // 🕵️ LOG 1: Monitor de sesión en tiempo real para producción
+  useEffect(() => {
+    console.log("🔍 [CLIENT] Estado de sesión (status):", status);
+    if (status === "authenticated") {
+      console.log("👤 [CLIENT] Usuario autenticado:", session?.user?.email);
+    }
+  }, [status, session]);
+
   const [step, setStep] = useState(1);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -40,6 +48,7 @@ export default function NuevoPacientePage() {
     }
   });
 
+  // Generación automática de expediente
   useEffect(() => {
     const fetchExpediente = async () => {
       try {
@@ -52,42 +61,57 @@ export default function NuevoPacientePage() {
     fetchExpediente();
   }, [setValue]);
 
-  if (status === "loading") {
-    return <div className="flex h-screen items-center justify-center font-bold text-nutri-main animate-pulse">Verificando sesión...</div>;
-  }
+  // ✅ CORRECCIÓN: Redirección mediante useEffect para evitar el "kick" al login
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      console.error("🚨 [CLIENT] Redirigiendo: Sesión no encontrada en el cliente.");
+      router.push("/login");
+    }
+  }, [status, router]);
 
-  if (status === "unauthenticated") {
-    router.push("/login");
-    return null;
+  // Pantalla de carga inicial (Solo una vez para evitar errores de TS)
+  if (status === "loading") {
+    return (
+      <div className="flex h-screen items-center justify-center font-bold text-nutri-main animate-pulse">
+        Verificando sesión...
+      </div>
+    );
   }
 
   const onSubmit = async (data: any) => {
+    console.log("🚀 [CLIENT] Iniciando envío de formulario...", data);
     try {
-      // ✅ CORRECCIÓN: Forzamos el tipo a 'any' para permitir el acceso a .max en el build
+      // ✅ Forzamos tipo 'any' para evitar errores de tipado con .max en el build
       const result = await registrarPaciente(data) as any;
+
+      console.log("✅ [CLIENT] Respuesta de registrarPaciente:", result);
 
       if (result.error === "DUPLICATE_PATIENT") {
         setShowDuplicateModal(true);
       } else if (result.error === "LIMIT_REACHED") {
-        // ✅ Ahora TypeScript no bloqueará el acceso a result.max
         toast.error(`Límite alcanzado: ${result.max} pacientes.`);
       } else if (result.success) {
+        console.log("🎉 [CLIENT] Guardado exitoso, mostrando modal.");
         setShowSuccessModal(true);
       } else {
+        console.warn("⚠️ [CLIENT] El servidor devolvió un error:", result.error);
         toast.error(result.error || "Error al guardar el paciente");
       }
     } catch (error) {
+      console.error("🔥 [CLIENT] Error crítico en la petición:", error);
       toast.error("Error de conexión con el servidor");
     }
   };
 
   const onError = (formErrors: any) => {
-    console.warn("⚠️ Errores de validación:", formErrors);
+    console.warn("⚠️ [CLIENT] Errores de validación en el formulario:", formErrors);
     toast.error("Por favor, completa todos los campos requeridos.");
   };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
+      
+      {/* CABECERA */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button 
@@ -104,6 +128,7 @@ export default function NuevoPacientePage() {
         </div>
       </div>
 
+      {/* PROGRESO */}
       <div className="flex items-center gap-4 bg-white p-6 rounded-4xl shadow-sm border border-gray-100">
         {[
           { id: 1, label: "Generales", icon: User },
@@ -123,11 +148,13 @@ export default function NuevoPacientePage() {
         ))}
       </div>
 
+      {/* FORMULARIO */}
       <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-8">
         {step === 1 && <StepGeneralData register={register} errors={errors} photoPreview={photoPreview} setPhotoPreview={setPhotoPreview} />}
         {step === 2 && <StepMedicalHistory register={register} watchCirugias={watch("cirugias")} />}
         {step === 3 && <StepExploration register={register} errors={errors} />}
 
+        {/* NAVEGACIÓN */}
         <div className="flex items-center justify-between pt-10 border-t border-gray-100">
           <button 
             type="button" 
