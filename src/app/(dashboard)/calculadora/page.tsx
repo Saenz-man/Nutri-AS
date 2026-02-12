@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { GRUPOS_SMAE } from "@/constants/smae"; // ⚠️ Verifica ruta
+import { useState, useMemo, useEffect } from "react";
+import { GRUPOS_SMAE } from "@/constants/smae";
 import { Play, RefreshCw } from "lucide-react";
 
 // Componentes
@@ -21,18 +21,19 @@ export default function CalculadoraPage() {
   const [actividad, setActividad] = useState(1.2);
   const [formula, setFormula] = useState("mifflin");
 
+  // ✅ ESTADO NUEVO: Meta Manual
+  const [metaManual, setMetaManual] = useState<number | null>(null);
+
   // 2. Estados Nutricionales
   const [macros, setMacros] = useState({ hco: 50, pro: 20, lip: 30 });
   const [equivalentes, setEquivalentes] = useState<Record<string, number>>({});
   const [hasGenerated, setHasGenerated] = useState(false);
 
-  // 3. Cálculos Biológicos (IMC, GET)
+  // 3. Cálculos Biológicos (IMC, GET Sugerido)
   const biometricos = useMemo(() => {
-    // IMC
     const metros = talla / 100;
     const imc = metros > 0 ? parseFloat((peso / (metros * metros)).toFixed(1)) : 0;
 
-    // TMB & GET
     let tmb = 0;
     if (formula === "mifflin") {
       const basar = (10 * peso) + (6.25 * talla) - (5 * edad);
@@ -41,36 +42,38 @@ export default function CalculadoraPage() {
       if (genero === "H") tmb = 66.5 + (13.75 * peso) + (5.003 * talla) - (6.75 * edad);
       else tmb = 655.1 + (9.563 * peso) + (1.85 * talla) - (4.676 * edad);
     } else if (formula === "valencia") {
-       // Simplificado para ejemplo (puedes meter la lógica completa aquí si quieres)
-       const p = peso;
-       if (genero === "H") tmb = (13.37 * p) + 747; // Rango 18-30 aprox
-       else tmb = (11.02 * p) + 679;
+       if (genero === "H") tmb = (13.37 * peso) + 747;
+       else tmb = (11.02 * peso) + 679;
     } else {
-        // Fallback simple
         tmb = peso * 24; 
     }
 
-    const gett = Math.round(tmb * actividad);
-
-    return { imc, tmb, gett };
+    return { imc, tmb, gettSugerido: Math.round(tmb * actividad) };
   }, [peso, talla, edad, genero, actividad, formula]);
 
-  // 4. Metas de Macros en Gramos
-  const metasGramos = useMemo(() => {
-    const { gett } = biometricos;
-    return {
-      kcal: gett,
-      hcoG: (gett * (macros.hco / 100)) / 4,
-      proG: (gett * (macros.pro / 100)) / 4,
-      lipG: (gett * (macros.lip / 100)) / 9,
-    };
-  }, [biometricos.gett, macros]);
+  // ✅ META FINAL: Prioriza la manual sobre la calculada
+  const metaFinal = useMemo(() => metaManual ?? biometricos.gettSugerido, [metaManual, biometricos.gettSugerido]);
 
-  // 5. Totales SMAE en Tiempo Real
+  // 💡 Limpiar meta manual si cambian datos base (opcional, para forzar recálculo)
+  useEffect(() => {
+    setMetaManual(null);
+  }, [peso, talla, edad, genero, actividad, formula]);
+
+  // 4. Metas de Macros en Gramos (Dependen de metaFinal)
+  const metasGramos = useMemo(() => {
+    return {
+      kcal: metaFinal,
+      hcoG: (metaFinal * (macros.hco / 100)) / 4,
+      proG: (metaFinal * (macros.pro / 100)) / 4,
+      lipG: (metaFinal * (macros.lip / 100)) / 9,
+    };
+  }, [metaFinal, macros]);
+
+  // 5. Totales SMAE
   const totalesSMAE = useMemo(() => {
     return Object.keys(equivalentes).reduce((acc, key) => {
       const cant = equivalentes[key] || 0;
-      const info = GRUPOS_SMAE[key as keyof typeof GRUPOS_SMAE]; // Typoscript cast
+      const info = GRUPOS_SMAE[key as keyof typeof GRUPOS_SMAE];
       if (!info) return acc;
       return {
         kcal: acc.kcal + (info.kcal * cant),
@@ -81,7 +84,7 @@ export default function CalculadoraPage() {
     }, { kcal: 0, pro: 0, lip: 0, hco: 0 });
   }, [equivalentes]);
 
-  // 6. Funciones Lógicas
+  // 6. Funciones
   const handleMacroChange = (key: string, value: number) => {
     setMacros((prev: any) => {
       const rest = 100 - value;
@@ -99,8 +102,7 @@ export default function CalculadoraPage() {
   };
 
   const handleGenerarSMAE = () => {
-    // Algoritmo simple de distribución automática
-    const kcal = biometricos.gett;
+    const kcal = metaFinal; // ✅ Usa la meta final (manual o sugerida)
     const propuesta = {
       verduras: 4,
       frutas: 3, 
@@ -121,7 +123,6 @@ export default function CalculadoraPage() {
       <PublicHeader />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* COLUMNA IZQUIERDA: Controles */}
         <div className="lg:col-span-4 space-y-6">
           <PublicDatos 
              edad={edad} setEdad={setEdad}
@@ -133,15 +134,17 @@ export default function CalculadoraPage() {
           />
           <PublicConfig 
              formula={formula} setFormula={setFormula}
-             gett={biometricos.gett} imc={biometricos.imc} edad={edad}
+             gett={metaFinal} 
+             setGett={setMetaManual} // ✅ Pasamos el setter manual
+             calculatedGett={biometricos.gettSugerido} // ✅ Pasamos el calculado para reset
+             imc={biometricos.imc} edad={edad}
           />
           <PublicMacros 
              macros={macros} onMacroChange={handleMacroChange}
-             metasGramos={metasGramos} gett={biometricos.gett}
+             metasGramos={metasGramos} gett={metaFinal}
           />
         </div>
 
-        {/* COLUMNA DERECHA: Resultados */}
         <div className="lg:col-span-8 space-y-6">
           <button 
             onClick={handleGenerarSMAE}
