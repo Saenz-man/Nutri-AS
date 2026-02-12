@@ -5,6 +5,10 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { UpdateUserSchema } from "@/schemas/user.schema";
 
+/**
+ * 🛠️ ACTUALIZACIÓN GENERAL DEL PERFIL
+ * Se usa para el formulario de configuración (nombre, carrera, etc.)
+ */
 export async function updateUserService(userId: string, data: any) {
   try {
     const session = await auth();
@@ -23,8 +27,6 @@ export async function updateUserService(userId: string, data: any) {
       };
     }
 
-    // ✅ CORRECCIÓN: Extraemos directamente las variables del schema validado
-    // Ya no intentamos leer 'cumpleaños' porque Zod ya lo transformó o validó como 'fechaNacimiento'
     const { 
       nombre, 
       apellido, 
@@ -42,10 +44,7 @@ export async function updateUserService(userId: string, data: any) {
         apellido,
         telefono,
         carrera,
-        
-        // ✅ Aseguramos que sea un objeto Date válido si existe el dato
         fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : undefined,
-
         fotoPerfil,
         fotoBanner,
       },
@@ -58,5 +57,36 @@ export async function updateUserService(userId: string, data: any) {
   } catch (error) {
     console.error("Error updating user:", error);
     return { error: "Error interno del servidor" };
+  }
+}
+
+/**
+ * ☁️ ACTUALIZACIÓN DE IMÁGENES (CLOUDINARY)
+ * Esta función es llamada directamente por el Widget de Cloudinary tras una subida exitosa.
+ * No requiere pasar todo el objeto del usuario, solo el tipo de foto y la URL.
+ */
+export async function actualizarImagenUsuario(tipo: "fotoPerfil" | "fotoBanner", url: string) {
+  try {
+    const session = await auth();
+    const userId = session?.user?.id;
+
+    // Solo el usuario autenticado puede actualizar sus fotos
+    if (!userId) {
+      return { error: "No autorizado" };
+    }
+
+    await db.user.update({
+      where: { id: userId },
+      data: { [tipo]: url }
+    });
+
+    // Refrescamos las rutas para que los cambios se vean al instante
+    revalidatePath("/dashboard");
+    revalidatePath("/configuracion");
+    
+    return { success: true };
+  } catch (error) {
+    console.error("❌ Error al sincronizar imagen con Hostinger:", error);
+    return { error: "Fallo al actualizar la imagen en la base de datos." };
   }
 }

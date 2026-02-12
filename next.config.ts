@@ -1,22 +1,32 @@
-// next.config.ts
+// next.config.mjs o next.config.js
+/** @type {import('next').NextConfig} */
 const nextConfig = {
+  // 🖼️ CONFIGURACIÓN DE IMÁGENES (Añade esto)
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**', // Permite cualquier ruta dentro de Cloudinary
+      },
+    ],
+  },
+
   async rewrites() {
     return [
-       {
-       source: '/dashboard/dietas',       // La URL bonita
+      {
+        source: '/dashboard/dietas',
         destination: '/lista-dietas',
       },
-        {
-    source: '/dashboard/material',     // La URL bonita
+      {
+        source: '/dashboard/material',
         destination: '/material-apoyo',
       },
-        {
-        // ⚙️ Configuración del usuario
+      {
         source: '/dashboard/configuracion',
         destination: '/configuracion',
       },
       {
-        // ⚙️ Configuración del usuario
         source: '/dashboard/calculadora',
         destination: '/calculadora',
       },
@@ -26,12 +36,10 @@ const nextConfig = {
         destination: '/Pacientes/:id/:path*',
       },
       {
-        // Para el expediente principal (ID)
         source: '/dashboard/pacientes/:id', 
         destination: '/Pacientes/:id',
       },
       {
-        // Para el catálogo general
         source: '/dashboard/pacientes',
         destination: '/Pacientes',
       },

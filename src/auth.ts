@@ -1,7 +1,8 @@
+// auth.ts
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
-import { db } from "@/lib/db"; // 💡 Consistencia total con tu Singleton
+import { db } from "@/lib/db"; 
 import bcrypt from "bcryptjs";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -30,23 +31,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: `${user.nombre} ${user.apellido}`,
           email: user.email,
           status: user.status,
+          // ✅ Incluimos las fotos en el objeto inicial
+          fotoPerfil: user.fotoPerfil,
+          fotoBanner: user.fotoBanner,
         };
       },
     }),
   ],
+  // src/auth.ts (Sección de callbacks)
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
-        token.status = user.status;
-        
+        token.status = (user as any).status;
+        token.fotoPerfil = (user as any).fotoPerfil;
+        token.fotoBanner = (user as any).fotoBanner;
       }
+
+      // ✅ AÑADIR ESTO: Permite actualizar la sesión sin cerrar sesión
+      if (trigger === "update" && session?.user) {
+        return { ...token, ...session.user };
+      }
+
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.status = token.status as string;
+        session.user.id = token.id;
+        session.user.status = token.status;
+        session.user.fotoPerfil = token.fotoPerfil;
+        session.user.fotoBanner = token.fotoBanner;
       }
       return session;
     },
