@@ -7,6 +7,7 @@ import { loginUser } from "@/actions/auth.actions";
 import { useState } from "react";
 import { z } from "zod";
 import { Eye, EyeOff, TrendingUp, Users, LogIn } from "lucide-react";
+import Link from "next/link";
 
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
@@ -39,11 +40,11 @@ export default function LoginPage() {
     <div className="flex flex-col min-h-screen bg-nutri-light">
       <Navbar />
       
-      <main className="grow flex items-center justify-center py-8 px-4">
-        {/* Dimensiones 1:1 con el registro: max-w-6xl y min-h-[700px] */}
+      {/* Añadido pt-24 para espacio debajo del Navbar y pb-12 para balance */}
+      <main className="grow flex items-center justify-center pt-24 pb-12 px-4">
         <div className="w-full max-w-6xl glass-card rounded-4xl shadow-nutri overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[700px]">
           
-          {/* COLUMNA IZQUIERDA: Mensaje (md:col-span-5) */}
+          {/* COLUMNA IZQUIERDA: Mensaje */}
           <div className="relative bg-nutri-main p-10 md:p-14 md:col-span-5 text-white flex flex-col justify-center overflow-hidden order-1">
             <Users className="absolute top-10 right-10 text-white/10 w-40 h-40 -rotate-12" />
             <TrendingUp className="absolute bottom-10 left-10 text-white/10 w-32 h-32 rotate-6" />
@@ -58,7 +59,7 @@ export default function LoginPage() {
               </h2>
               
               <p className="text-nutri-light/90 text-lg md:text-xl leading-relaxed">
-                Retoma la gestión de tus pacientes y accede a tus herramientas de cálculo inteligente diseñadas por **Un Desarrollo Mas**.
+                Retoma la gestión de tus pacientes y accede a tus herramientas de cálculo inteligente.
               </p>
               
               <ul className="space-y-4 pt-4">
@@ -74,7 +75,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* COLUMNA DERECHA: Formulario (md:col-span-7) */}
+          {/* COLUMNA DERECHA: Formulario */}
           <div className="p-8 md:p-12 md:col-span-7 order-2 bg-white/40 backdrop-blur-sm flex flex-col justify-center">
             <div className="text-center md:text-left mb-10">
               <h1 className="text-4xl text-gray-900 font-bold tracking-tight">
@@ -130,19 +131,21 @@ export default function LoginPage() {
               </div>
 
               <div className="text-center md:text-left space-y-4 pt-6 border-t border-gray-100 mt-8">
-                <p className="text-gray-400 text-xs hover:text-nutri-main transition-colors cursor-pointer font-medium">
+                <Link 
+                  href="/forgot-password" 
+                  className="block text-gray-400 text-xs hover:text-nutri-main transition-colors font-medium"
+                >
                   ¿Olvidaste tu contraseña?
-                </p>
+                </Link>
                 <p className="text-gray-500 text-sm font-medium">
                   ¿No tienes cuenta?{" "}
-                  <a href="/registro" className="text-nutri-main font-bold hover:text-nutri-dark transition-colors underline underline-offset-4 decoration-2">
+                  <Link href="/registro" className="text-nutri-main font-bold hover:text-nutri-dark transition-colors underline underline-offset-4 decoration-2">
                     Regístrate aquí.
-                  </a>
+                  </Link>
                 </p>
               </div>
             </form>
           </div>
-          
         </div>
       </main>
 

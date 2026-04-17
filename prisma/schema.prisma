@@ -34,7 +34,6 @@ model User {
 model Patient {
   id                     String         @id @default(uuid())
   
-  // ✅ CORRECCIÓN: Se quita @unique para permitir duplicados entre diferentes nutriólogos
   expediente             String         
   
   nombre                 String
@@ -62,6 +61,37 @@ model Patient {
   appointments           Appointment[]
   consultations          Consultation[]
   nutritionist           User           @relation(fields: [nutritionistId], references: [id])
+
+  // 🥗 HÁBITOS Y PREFERENCIAS ALIMENTARIAS
+  gustosAlimentarios     String?   @db.Text
+  disgustosAlimentarios  String?   @db.Text
+  alergiasAlimentarias   Boolean   @default(false)
+  alergiasDetalle        String?   @db.Text
+  intolerancias          String?   @db.Text
+  suplementos            Boolean   @default(false)
+  suplementosDetalle     String?   @db.Text
+  comidasAlDia           String?   
+  seSaltaComidas         Boolean   @default(false)
+  seSaltaComidasDetalle  String?   @db.Text
+  motivoComer            String?   
+  frecuenciaComidaFuera  String?   
+  hidratacionAgua        Float?    
+  hidratacionOtros       String?   @db.Text
+  
+  // 🚬 TOXICOMANÍAS Y CONDUCTA
+  tabaco                 String?   
+  tabacoCantidad         String?   
+  alcohol                String?   
+  alcoholCantidad        String?   
+  otrasSustancias        Boolean   @default(false)
+  otrasSustanciasDetalle String?   @db.Text
+  otrasSustanciasFrecuencia String?
+  cafeina                Boolean   @default(false)
+  cafeinaCantidad        String?   
+  observacionesConductuales String? @db.Text
+  
+  // 📊 FRECUENCIA DE CONSUMO (Almacenado como JSON)
+  frecuenciaConsumo      Json?
 
   // ✅ SOLUCIÓN AL ERROR P2002: El expediente es único SOLO dentro del catálogo de un mismo nutriólogo
   @@unique([expediente, nutritionistId])
@@ -221,4 +251,14 @@ enum UserStatus {
 enum PatientStatus {
   ACTIVO
   INACTIVO
+}
+
+// 🔐 TOKEN PARA RECUPERACIÓN DE CONTRASEÑA
+model PasswordResetToken {
+  id      String   @id @default(uuid())
+  email   String   @unique
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
 }

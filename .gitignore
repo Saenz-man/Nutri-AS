@@ -46,6 +46,5 @@ next-env.d.ts
 prisma.config.ts
 
 # Asegurar que el entorno no se suba (ya lo tenías, pero vale doble check)
-.env
 .env.local
 .env.production

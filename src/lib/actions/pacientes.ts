@@ -53,7 +53,6 @@ export const registrarPaciente = async (data: any) => {
   if (!userId) return { error: "No autorizado" };
 
   try {
-    // Validación de duplicados específica para este nutriólogo
     const existe = await db.patient.findFirst({
       where: { expediente: data.expediente, nutritionistId: userId }
     });
@@ -62,6 +61,7 @@ export const registrarPaciente = async (data: any) => {
 
     const newPatient = await db.patient.create({
       data: {
+        // --- DATOS BÁSICOS ---
         nombre: data.nombre,
         apellido: data.apellido,
         expediente: data.expediente,
@@ -70,17 +70,45 @@ export const registrarPaciente = async (data: any) => {
         sexo: data.sexo,
         fechaNacimiento: data.fechaNacimiento ? new Date(data.fechaNacimiento) : null,
         nutritionistId: userId,
-        
-        // ✅ MAPEO DE CAMPOS CLÍNICOS
         motivoConsulta: data.motivoConsulta,
+
+        // --- ANTECEDENTES Y CLÍNICA ---
         antecedentesFamiliares: data.antecedentesFamiliares || [],
-        
-        // ✅ AHORA SÍ PUEDES INCLUIR ESTE CAMPO:
         patologicosPersonales: data.patologicosPersonales || [],
-        
         cirugias: data.cirugias === "true",
         cirugiasDetalle: data.cirugiasDetalle,
-        exploracion: data.exploracion, 
+
+        // --- HÁBITOS Y PREFERENCIAS (NUEVO) ---
+        gustosAlimentarios: data.gustosAlimentarios,
+        disgustosAlimentarios: data.disgustosAlimentarios,
+        alergiasAlimentarias: data.alergiasAlimentarias === "true",
+        alergiasDetalle: data.alergiasDetalle,
+        intolerancias: data.intolerancias,
+        suplementos: data.suplementos === "true",
+        suplementosDetalle: data.suplementosDetalle,
+        comidasAlDia: data.comidasAlDia,
+        seSaltaComidas: data.seSaltaComidas === "true",
+        seSaltaComidasDetalle: data.seSaltaComidasDetalle,
+        motivoComer: data.motivoComer,
+        frecuenciaComidaFuera: data.frecuenciaComidaFuera,
+        hidratacionAgua: data.hidratacionAgua ? parseFloat(data.hidratacionAgua) : 0,
+        hidratacionOtros: data.hidratacionOtros,
+
+        // --- TOXICOMANÍAS Y CONDUCTA ---
+        tabaco: data.tabaco,
+        tabacoCantidad: data.tabacoCantidad,
+        alcohol: data.alcohol,
+        alcoholCantidad: data.alcoholCantidad,
+        otrasSustancias: data.otrasSustancias === "true",
+        otrasSustanciasDetalle: data.otrasSustanciasDetalle,
+        otrasSustanciasFrecuencia: data.otrasSustanciasFrecuencia,
+        cafeina: data.cafeina === "true",
+        cafeinaCantidad: data.cafeinaCantidad,
+        observacionesConductuales: data.observacionesConductuales,
+
+        // --- DATOS COMPLEJOS (JSON) ---
+        frecuenciaConsumo: data.frecuenciaConsumo || {},
+        exploracion: data.exploracion || {},
         diagnosticoNutricional: data.diagnosticoNutricional,
       },
     });
@@ -88,8 +116,6 @@ export const registrarPaciente = async (data: any) => {
     revalidatePath("/dashboard/pacientes");
     return { success: true, id: newPatient.id };
   } catch (error: any) {
-    if (error.code === 'P2002') return { error: "DUPLICATE_PATIENT" };
-    
     console.error("❌ Error de Prisma:", error);
     return { error: "Error técnico al guardar." };
   }

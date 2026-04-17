@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, FieldErrors } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,27 +12,47 @@ import { toast } from "sonner";
 // Iconos e Imagenes
 import { 
   User, Heart, Activity, ArrowLeft, 
-  ChevronLeft, ChevronRight, Save 
+  ChevronLeft, ChevronRight, Save, Utensils   
 } from "lucide-react";
 
 // Componentes Modulares
 import StepGeneralData from "./step-general-data";
 import StepMedicalHistory from "./step-medical-history";
+import StepHabits from "./step-habits"; 
 import StepExploration from "./step-exploration";
 import SuccessModal from "./success-modal";
 import DuplicateModal from "./DuplicateModal";
+
+// 📖 Diccionario de traducción de campos técnicos a nombres humanos
+const etiquetasCampos: Record<string, string> = {
+  nombre: "Nombre",
+  apellido: "Apellido",
+  email: "Correo electrónico",
+  telefono: "Teléfono",
+  fechaNacimiento: "Fecha de Nacimiento",
+  sexo: "Sexo",
+  expediente: "Número de Expediente",
+  talla: "Estatura/Talla",
+  motivoConsulta: "Motivo de Consulta",
+  antecedentesFamiliares: "Antecedentes Familiares",
+  patologicosPersonales: "Antecedentes Patológicos",
+  cirugias: "Cirugías",
+  diagnosticoNutricional: "Diagnóstico Nutricional",
+  comidasAlDia: "Comidas al día",
+  hidratacionAgua: "Consumo de agua",
+  // Agrega más si tu esquema tiene otros campos obligatorios
+};
 
 export default function NuevoPacientePage() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
-  // 🕵️ LOG 1: Monitor de sesión en tiempo real para producción
+  // Monitor de sesión
   useEffect(() => {
-    console.log("🔍 [CLIENT] Estado de sesión (status):", status);
-    if (status === "authenticated") {
-      console.log("👤 [CLIENT] Usuario autenticado:", session?.user?.email);
+    if (status === "unauthenticated") {
+      router.push("/login");
     }
-  }, [status, session]);
+  }, [status, router]);
 
   const [step, setStep] = useState(1);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -44,7 +64,12 @@ export default function NuevoPacientePage() {
     defaultValues: {
       cirugias: "false",
       antecedentesFamiliares: [],
-      patologicosPersonales: []
+      patologicosPersonales: [],
+      alergiasAlimentarias: "false", 
+      suplementos: "false",
+      seSaltaComidas: "false",
+      otrasSustancias: "false",
+      cafeina: "false"
     }
   });
 
@@ -61,15 +86,6 @@ export default function NuevoPacientePage() {
     fetchExpediente();
   }, [setValue]);
 
-  // ✅ CORRECCIÓN: Redirección mediante useEffect para evitar el "kick" al login
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      console.error("🚨 [CLIENT] Redirigiendo: Sesión no encontrada en el cliente.");
-      router.push("/login");
-    }
-  }, [status, router]);
-
-  // Pantalla de carga inicial (Solo una vez para evitar errores de TS)
   if (status === "loading") {
     return (
       <div className="flex h-screen items-center justify-center font-bold text-nutri-main animate-pulse">
@@ -79,33 +95,35 @@ export default function NuevoPacientePage() {
   }
 
   const onSubmit = async (data: any) => {
-    console.log("🚀 [CLIENT] Iniciando envío de formulario...", data);
     try {
-      // ✅ Forzamos tipo 'any' para evitar errores de tipado con .max en el build
       const result = await registrarPaciente(data) as any;
-
-      console.log("✅ [CLIENT] Respuesta de registrarPaciente:", result);
 
       if (result.error === "DUPLICATE_PATIENT") {
         setShowDuplicateModal(true);
       } else if (result.error === "LIMIT_REACHED") {
         toast.error(`Límite alcanzado: ${result.max} pacientes.`);
       } else if (result.success) {
-        console.log("🎉 [CLIENT] Guardado exitoso, mostrando modal.");
         setShowSuccessModal(true);
       } else {
-        console.warn("⚠️ [CLIENT] El servidor devolvió un error:", result.error);
         toast.error(result.error || "Error al guardar el paciente");
       }
     } catch (error) {
-      console.error("🔥 [CLIENT] Error crítico en la petición:", error);
       toast.error("Error de conexión con el servidor");
     }
   };
 
-  const onError = (formErrors: any) => {
-    console.warn("⚠️ [CLIENT] Errores de validación en el formulario:", formErrors);
-    toast.error("Por favor, completa todos los campos requeridos.");
+  // ✅ CORRECCIÓN: Función que detecta qué campos faltan y los muestra en el Toast
+  const onError = (formErrors: FieldErrors) => {
+    const camposFaltantes = Object.keys(formErrors)
+      .map((key) => etiquetasCampos[key] || key) // Usa la traducción o el nombre técnico si no existe
+      .join(", ");
+
+    toast.error(`Faltan campos obligatorios: ${camposFaltantes}`, {
+      description: "Por favor, revisa todos los pasos del formulario.",
+      duration: 5000,
+    });
+
+    console.log("❌ Errores de validación detectados:", formErrors);
   };
 
   return (
@@ -129,18 +147,19 @@ export default function NuevoPacientePage() {
       </div>
 
       {/* PROGRESO */}
-      <div className="flex items-center gap-4 bg-white p-6 rounded-4xl shadow-sm border border-gray-100">
+      <div className="flex items-center gap-4 bg-white p-6 rounded-4xl shadow-sm border border-gray-100 overflow-x-auto">
         {[
           { id: 1, label: "Generales", icon: User },
-          { id: 2, label: "Antecedentes", icon: Heart },
-          { id: 3, label: "Exploración", icon: Activity },
+          { id: 2, label: "Clínica", icon: Heart },
+          { id: 3, label: "Hábitos", icon: Utensils },
+          { id: 4, label: "Exploración", icon: Activity },
         ].map((s, index, array) => (
-          <div key={s.id} className="flex items-center gap-3 flex-1 last:flex-none">
+          <div key={s.id} className="flex items-center gap-3 flex-1 last:flex-none min-w-fit">
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${step === s.id ? 'bg-nutri-main text-white scale-110 shadow-lg' : step > s.id ? 'bg-nutri-main/10 text-nutri-main' : 'bg-gray-50 text-gray-300'}`}>
               {step > s.id ? "✓" : <s.icon size={22} />}
             </div>
             {index !== array.length - 1 && (
-              <div className="flex-1 h-1 bg-gray-100 rounded-full mx-2 overflow-hidden">
+              <div className="flex-1 h-1 bg-gray-100 rounded-full mx-2 overflow-hidden min-w-[20px] hidden md:block">
                 <div className="h-full bg-nutri-main transition-all duration-700" style={{ width: step > s.id ? '100%' : '0%' }} />
               </div>
             )}
@@ -150,9 +169,33 @@ export default function NuevoPacientePage() {
 
       {/* FORMULARIO */}
       <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-8">
-        {step === 1 && <StepGeneralData register={register} errors={errors} photoPreview={photoPreview} setPhotoPreview={setPhotoPreview} />}
-        {step === 2 && <StepMedicalHistory register={register} watchCirugias={watch("cirugias")} />}
-        {step === 3 && <StepExploration register={register} errors={errors} />}
+        {step === 1 && (
+          <StepGeneralData 
+            register={register} 
+            errors={errors} 
+            photoPreview={photoPreview} 
+            setPhotoPreview={setPhotoPreview} 
+          />
+        )}
+        {step === 2 && (
+          <StepMedicalHistory 
+            register={register} 
+            watchCirugias={watch("cirugias")} 
+          />
+        )}
+        {step === 3 && (
+          <StepHabits 
+            register={register} 
+            watch={watch} 
+            errors={errors} 
+          />
+        )}
+        {step === 4 && (
+          <StepExploration 
+            register={register} 
+            errors={errors} 
+          />
+        )}
 
         {/* NAVEGACIÓN */}
         <div className="flex items-center justify-between pt-10 border-t border-gray-100">
@@ -166,7 +209,7 @@ export default function NuevoPacientePage() {
           </button>
 
           <div className="flex items-center gap-4">
-            {step < 3 ? (
+            {step < 4 ? (
               <button 
                 type="button" 
                 onClick={() => setStep(step + 1)}
